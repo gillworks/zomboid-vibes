@@ -131,7 +131,6 @@ export class Game {
 
     // Create the UI manager
     this.uiManager = new UIManager(this.player);
-    this.uiManager.init();
 
     // Set up lights
     this.setupLights();
