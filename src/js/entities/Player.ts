@@ -123,6 +123,9 @@ export class Player {
 
       // Update camera to follow player but maintain isometric angle
       this.updateCameraPosition();
+
+      // Rotate the player model to face the direction of movement
+      this.rotateToFaceMovement();
     }
 
     // Decrease hunger over time
@@ -134,42 +137,50 @@ export class Player {
     }
   }
 
+  // New method to rotate the player model to face the direction of movement
+  private rotateToFaceMovement(): void {
+    if (this.moveDirection.length() > 0) {
+      // Calculate the angle to face the movement direction
+      const angle = Math.atan2(this.moveDirection.x, this.moveDirection.z);
+
+      // Create a target rotation
+      const targetRotation = new THREE.Euler(0, angle, 0);
+
+      // Smoothly rotate towards the target
+      this.playerGroup.rotation.y = angle;
+    }
+  }
+
+  // Update movement methods to use screen-relative directions
   public moveForward(): void {
     this.isMoving = true;
-    this.moveDirection
-      .set(0, 0, -1)
-      .applyQuaternion(this.playerGroup.quaternion)
-      .normalize();
+    // Move towards the top of the screen (negative Z in isometric view)
+    this.moveDirection.set(0, 0, -1).normalize();
   }
 
   public moveBackward(): void {
     this.isMoving = true;
-    this.moveDirection
-      .set(0, 0, 1)
-      .applyQuaternion(this.playerGroup.quaternion)
-      .normalize();
+    // Move towards the bottom of the screen (positive Z in isometric view)
+    this.moveDirection.set(0, 0, 1).normalize();
   }
 
   public moveLeft(): void {
     this.isMoving = true;
-    this.moveDirection
-      .set(-1, 0, 0)
-      .applyQuaternion(this.playerGroup.quaternion)
-      .normalize();
+    // Move towards the left of the screen (negative X in isometric view)
+    this.moveDirection.set(-1, 0, 0).normalize();
   }
 
   public moveRight(): void {
     this.isMoving = true;
-    this.moveDirection
-      .set(1, 0, 0)
-      .applyQuaternion(this.playerGroup.quaternion)
-      .normalize();
+    // Move towards the right of the screen (positive X in isometric view)
+    this.moveDirection.set(1, 0, 0).normalize();
   }
 
   public stopMoving(): void {
     this.isMoving = false;
   }
 
+  // Keep these methods for potential future use, but they won't be called by input manager
   public rotateLeft(delta: number): void {
     this.playerGroup.rotation.y += this.rotationSpeed * delta;
   }
@@ -287,5 +298,14 @@ export class Player {
     // Reset position
     this.playerGroup.position.set(0, 0, 0);
     this.playerGroup.rotation.set(0, 0, 0);
+  }
+
+  // Add these new methods for diagonal movement
+  public setMoveDirection(direction: THREE.Vector3): void {
+    this.moveDirection.copy(direction);
+  }
+
+  public startMoving(): void {
+    this.isMoving = true;
   }
 }
