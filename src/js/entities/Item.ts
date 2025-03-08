@@ -23,6 +23,9 @@ export class Item {
     // Create the item mesh based on type
     this.itemMesh = this.createItemMesh(type, color);
 
+    // Set initial position at origin with fixed height
+    this.setPosition(0, 0, 0);
+
     // Add to scene
     this.scene.add(this.itemMesh);
 
@@ -90,7 +93,7 @@ export class Item {
   }
 
   public setPosition(x: number, y: number, z: number): void {
-    this.itemMesh.position.set(x, y + 1.0, z); // Lift slightly above ground
+    this.itemMesh.position.set(x, 1.5, z); // Fixed height of 1.5 units
   }
 
   public getPosition(): THREE.Vector3 {
