@@ -386,29 +386,46 @@ export class World {
     depth: number
   ): void {
     // Create a simple plane geometry for the forest floor
-    const forestGeometry = new THREE.PlaneGeometry(width, depth);
+    const forestGeometry = new THREE.PlaneGeometry(width, depth, 20, 20);
 
-    // Create a simple, unmissable bright green material
-    const forestMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ff00, // Bright green that can't be missed
-      side: THREE.DoubleSide, // Render both sides
+    // Apply some gentle noise to the terrain for a more natural look
+    const forestVertices = forestGeometry.attributes.position.array;
+    for (let i = 0; i < forestVertices.length; i += 3) {
+      const vx = forestVertices[i];
+      const vz = forestVertices[i + 2];
+
+      // Calculate world position
+      const worldX = vx + x;
+      const worldZ = vz + z;
+
+      // Gentle noise for natural terrain
+      const elevation = this.noise.noise(worldX * 0.01, worldZ * 0.01) * 0.3;
+      forestVertices[i + 1] = elevation;
+    }
+
+    forestGeometry.computeVertexNormals();
+    forestGeometry.attributes.position.needsUpdate = true;
+
+    // Create a more natural looking grass material
+    const forestMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4caf50, // Natural green color
+      roughness: 0.8,
+      metalness: 0.0,
+      flatShading: false,
+      // Add a slight emissive property to ensure visibility
+      emissive: 0x2e7d32,
+      emissiveIntensity: 0.1,
     });
 
     const forestTerrain = new THREE.Mesh(forestGeometry, forestMaterial);
     forestTerrain.rotation.x = -Math.PI / 2; // Rotate to be horizontal
 
     // Position the forest floor slightly higher to ensure it's visible
-    forestTerrain.position.set(x, 0.1, z);
+    forestTerrain.position.set(x, 0.05, z);
+    forestTerrain.receiveShadow = true;
 
     // Add to scene
     this.scene.add(forestTerrain);
-
-    // Add a debug box to mark the center of each forest section
-    const markerGeometry = new THREE.BoxGeometry(5, 5, 5);
-    const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-    marker.position.set(x, 2.5, z);
-    this.scene.add(marker);
   }
 
   private generateRoads(): void {
