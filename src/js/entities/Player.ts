@@ -39,6 +39,7 @@ export class Player {
   private attackCooldown: number = 0.5; // seconds
   private timeSinceLastAttack: number = 0;
   private isAttacking: boolean = false;
+  private knockbackForce: number = 3; // Force of knockback effect
 
   constructor(
     scene: THREE.Scene,
@@ -579,6 +580,21 @@ export class Player {
           zombie.takeDamage(this.attackDamage);
           console.log("Hit zombie! Damage dealt:", this.attackDamage);
           hitZombie = true;
+
+          // Apply knockback effect
+          const knockbackDirection = directionToZombie.clone();
+          const knockbackDistance = this.knockbackForce;
+          const newPosition = zombiePos
+            .clone()
+            .add(knockbackDirection.multiplyScalar(knockbackDistance));
+
+          // Set the zombie's new position with knockback
+          zombie.setPosition(newPosition.x, newPosition.y, newPosition.z);
+          console.log(
+            "Applied knockback to zombie:",
+            knockbackDistance,
+            "units"
+          );
         }
       }
     }
