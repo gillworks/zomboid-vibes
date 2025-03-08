@@ -528,6 +528,12 @@ export class Player {
     this.timeSinceLastAttack = 0;
     this.isAttacking = true;
 
+    // Temporary fix: Force reset isAttacking after 500ms
+    setTimeout(() => {
+      console.log("Force resetting isAttacking flag");
+      this.isAttacking = false;
+    }, 500);
+
     // Play attack animation
     this.animateAttack();
 
@@ -543,7 +549,10 @@ export class Player {
     // Check for zombies in range
     let hitZombie = false;
     for (const zombie of zombies) {
-      if (zombie.isDead()) continue;
+      if (zombie.isDead()) {
+        console.log("Zombie is dead, skipping");
+        continue;
+      }
 
       const zombiePos = zombie.getPosition();
       const distanceToZombie = playerPos.distanceTo(zombiePos);
@@ -580,53 +589,36 @@ export class Player {
   }
 
   private animateAttack(): void {
+    console.log("Starting attack animation");
+
     // Store original arm rotations
     const leftArmOriginalRotation = this.leftArm.rotation.clone();
     const rightArmOriginalRotation = this.rightArm.rotation.clone();
 
-    // Quick forward swing animation
-    const swingForward = new TWEEN.Tween({
-      leftArmRotationX: leftArmOriginalRotation.x,
-      rightArmRotationX: rightArmOriginalRotation.x,
-    })
-      .to(
-        {
-          leftArmRotationX: -Math.PI / 2,
-          rightArmRotationX: -Math.PI / 2,
-        },
-        150
-      )
-      .easing(TWEEN.Easing.Cubic.Out)
-      .onUpdate((obj) => {
-        if (this.leftArm) this.leftArm.rotation.x = obj.leftArmRotationX;
-        if (this.rightArm) this.rightArm.rotation.x = obj.rightArmRotationX;
-      })
-      .start();
+    console.log(
+      "Original arm rotations:",
+      leftArmOriginalRotation,
+      rightArmOriginalRotation
+    );
 
-    // Return to original position
-    swingForward.onComplete(() => {
-      new TWEEN.Tween({
-        leftArmRotationX: -Math.PI / 2,
-        rightArmRotationX: -Math.PI / 2,
-      })
-        .to(
-          {
-            leftArmRotationX: leftArmOriginalRotation.x,
-            rightArmRotationX: rightArmOriginalRotation.x,
-          },
-          300
-        )
-        .easing(TWEEN.Easing.Cubic.Out)
-        .onUpdate((obj) => {
-          if (this.leftArm) this.leftArm.rotation.x = obj.leftArmRotationX;
-          if (this.rightArm) this.rightArm.rotation.x = obj.rightArmRotationX;
-        })
-        .onComplete(() => {
-          this.isAttacking = false;
-          console.log("Attack animation completed");
-        })
-        .start();
-    });
+    // Directly set the arm rotations for the forward swing
+    this.leftArm.rotation.x = -Math.PI / 2;
+    this.rightArm.rotation.x = -Math.PI / 2;
+
+    console.log("Arms rotated forward");
+
+    // Use setTimeout to return the arms to their original position after a delay
+    setTimeout(() => {
+      // Return arms to original position
+      this.leftArm.rotation.x = leftArmOriginalRotation.x;
+      this.rightArm.rotation.x = rightArmOriginalRotation.x;
+
+      console.log("Arms returned to original position");
+
+      // Reset the attacking flag
+      this.isAttacking = false;
+      console.log("Attack animation completed");
+    }, 300);
   }
 
   public canAttack(): boolean {
