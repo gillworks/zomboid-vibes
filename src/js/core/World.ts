@@ -470,7 +470,7 @@ export class World {
         this.roadWidth
       );
       const road = new THREE.Mesh(roadGeometry, roadMaterial);
-      road.position.set(0, -0.01, z);
+      road.position.set(0, 0.05, z);
       this.roads.add(road);
     }
 
@@ -487,7 +487,7 @@ export class World {
         neighborhoodSize
       );
       const road = new THREE.Mesh(roadGeometry, roadMaterial);
-      road.position.set(x, -0.01, 0);
+      road.position.set(x, 0.05, 0);
       this.roads.add(road);
     }
 
@@ -503,7 +503,7 @@ export class World {
 
       const lineGeometry = new THREE.BoxGeometry(neighborhoodSize, 0.05, 0.3);
       const line = new THREE.Mesh(lineGeometry, linesMaterial);
-      line.position.set(0, 0.04, z);
+      line.position.set(0, 0.1, z);
       this.roads.add(line);
     }
 
@@ -516,7 +516,7 @@ export class World {
 
       const lineGeometry = new THREE.BoxGeometry(0.3, 0.05, neighborhoodSize);
       const line = new THREE.Mesh(lineGeometry, linesMaterial);
-      line.position.set(x, 0.04, 0);
+      line.position.set(x, 0.1, 0);
       this.roads.add(line);
     }
   }
@@ -549,7 +549,7 @@ export class World {
       );
       sidewalkTop.position.set(
         0,
-        -0.02,
+        0.075,
         z - (this.roadWidth / 2 + this.sidewalkWidth / 2)
       );
       this.sidewalks.add(sidewalkTop);
@@ -561,7 +561,7 @@ export class World {
       );
       sidewalkBottom.position.set(
         0,
-        -0.02,
+        0.075,
         z + (this.roadWidth / 2 + this.sidewalkWidth / 2)
       );
       this.sidewalks.add(sidewalkBottom);
@@ -581,7 +581,7 @@ export class World {
       );
       sidewalkLeft.position.set(
         x - (this.roadWidth / 2 + this.sidewalkWidth / 2),
-        -0.02,
+        0.075,
         0
       );
       this.sidewalks.add(sidewalkLeft);
@@ -593,7 +593,7 @@ export class World {
       );
       sidewalkRight.position.set(
         x + (this.roadWidth / 2 + this.sidewalkWidth / 2),
-        -0.02,
+        0.075,
         0
       );
       this.sidewalks.add(sidewalkRight);
