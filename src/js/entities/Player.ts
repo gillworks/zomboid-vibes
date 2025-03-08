@@ -189,12 +189,16 @@ export class Player {
       metalness: 0.1,
     });
     const backpack = new THREE.Mesh(backpackGeometry, backpackMaterial);
-    backpack.position.set(0, 0.9, 0.25);
+    // Move backpack to the back of the character (negative Z)
+    backpack.position.set(0, 0.9, -0.25);
     backpack.castShadow = true;
     characterGroup.add(backpack);
 
     // Add the character group to the player group
     this.playerGroup.add(characterGroup);
+
+    // Rotate the entire character group to face forward (negative Z direction)
+    characterGroup.rotation.y = Math.PI;
 
     // Adjust the overall scale
     this.playerGroup.scale.set(0.8, 0.8, 0.8);
@@ -229,7 +233,9 @@ export class Player {
     if (this.moveDirection.length() > 0) {
       // Calculate the angle to face the movement direction
       // For isometric view, we need to adjust the angle calculation
-      const angle = Math.atan2(this.moveDirection.x, this.moveDirection.z);
+      // Add PI to the angle to account for the initial rotation of the character model
+      const angle =
+        Math.atan2(this.moveDirection.x, this.moveDirection.z) + Math.PI;
 
       // Smoothly rotate towards the target
       this.playerGroup.rotation.y = angle;
