@@ -31,7 +31,7 @@ export class Game {
     // Create the scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x111111);
-    this.scene.fog = new THREE.FogExp2(0x111111, 0.05);
+    this.scene.fog = new THREE.FogExp2(0x333333, 0.01);
 
     // Create the camera with isometric perspective
     this.camera = new THREE.PerspectiveCamera(
