@@ -37,9 +37,9 @@ export class Player {
   private animationTime: number = 0;
   private walkingSpeed: number = 5; // Animation speed multiplier
 
-  private attackRange: number = 2;
+  private attackRange: number = 3;
   private attackDamage: number = 25;
-  private attackCooldown: number = 0.2; // seconds
+  private attackCooldown: number = 0.1; // seconds
   private timeSinceLastAttack: number = 0;
   private isAttacking: boolean = false;
   private knockbackForce: number = 2; // Force of knockback effect
