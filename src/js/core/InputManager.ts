@@ -5,6 +5,14 @@ export class InputManager {
   private player: Player;
   private keys: { [key: string]: boolean } = {};
 
+  // Define isometric directions
+  private readonly ISO_DIRECTIONS = {
+    UP: new THREE.Vector3(-1, 0, -1), // North-West
+    DOWN: new THREE.Vector3(1, 0, 1), // South-East
+    LEFT: new THREE.Vector3(-1, 0, 1), // South-West
+    RIGHT: new THREE.Vector3(1, 0, -1), // North-East
+  };
+
   constructor(player: Player) {
     this.player = player;
 
@@ -47,18 +55,18 @@ export class InputManager {
     // Create a movement vector for diagonal movement
     const moveVector = new THREE.Vector3(0, 0, 0);
 
-    // Add movement components based on pressed keys
+    // Add movement components based on pressed keys, using isometric directions
     if (this.keys["w"]) {
-      moveVector.z -= 1; // Forward/Up
+      moveVector.add(this.ISO_DIRECTIONS.UP);
     }
     if (this.keys["s"]) {
-      moveVector.z += 1; // Backward/Down
+      moveVector.add(this.ISO_DIRECTIONS.DOWN);
     }
     if (this.keys["a"]) {
-      moveVector.x -= 1; // Left
+      moveVector.add(this.ISO_DIRECTIONS.LEFT);
     }
     if (this.keys["d"]) {
-      moveVector.x += 1; // Right
+      moveVector.add(this.ISO_DIRECTIONS.RIGHT);
     }
 
     // If we have movement, normalize and apply it

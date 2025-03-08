@@ -141,10 +141,8 @@ export class Player {
   private rotateToFaceMovement(): void {
     if (this.moveDirection.length() > 0) {
       // Calculate the angle to face the movement direction
+      // For isometric view, we need to adjust the angle calculation
       const angle = Math.atan2(this.moveDirection.x, this.moveDirection.z);
-
-      // Create a target rotation
-      const targetRotation = new THREE.Euler(0, angle, 0);
 
       // Smoothly rotate towards the target
       this.playerGroup.rotation.y = angle;
