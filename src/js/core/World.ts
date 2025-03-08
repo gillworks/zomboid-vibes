@@ -35,6 +35,9 @@ export class World {
   private colliders: THREE.Object3D[] = [];
   private collisionRadius: { [id: string]: number } = {};
 
+  // Track house positions to prevent trees from spawning inside houses
+  private housePlots: Set<string> = new Set();
+
   private noise: SimplexNoise;
 
   constructor(scene: THREE.Scene, loadingManager: THREE.LoadingManager) {
@@ -641,6 +644,9 @@ export class World {
       metalness: 0.2,
     });
 
+    // Clear the house plots set before generating new houses
+    this.housePlots.clear();
+
     // For each block in the grid
     for (let blockX = 0; blockX < numBlocksX; blockX++) {
       for (let blockZ = 0; blockZ < numBlocksZ; blockZ++) {
@@ -697,6 +703,10 @@ export class World {
                 ],
                 roofMaterial
               );
+
+              // Track this plot as having a house
+              const plotKey = `${Math.round(houseX)},${Math.round(houseZ)}`;
+              this.housePlots.add(plotKey);
             }
           }
         }
@@ -1170,6 +1180,15 @@ export class World {
             // Calculate the position for this plot
             const plotCenterX = startX + plotX * this.plotSize;
             const plotCenterZ = startZ + plotZ * this.plotSize;
+
+            // Check if there's a house on this plot
+            const plotKey = `${Math.round(plotCenterX)},${Math.round(
+              plotCenterZ
+            )}`;
+            if (this.housePlots.has(plotKey)) {
+              // Skip this plot if it has a house
+              continue;
+            }
 
             // 60% chance to add 1-2 trees to the plot
             if (Math.random() < 0.6) {
