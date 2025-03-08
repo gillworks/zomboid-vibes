@@ -12,6 +12,10 @@ export class World {
   private terrainMaterial: THREE.MeshStandardMaterial;
   private terrain: THREE.Mesh;
 
+  // Store neighborhood size for use across methods
+  private neighborhoodSize: number = 0;
+  private neighborhoodHalfSize: number = 0;
+
   private buildings: THREE.Group;
   private trees: THREE.Group;
   private obstacles: THREE.Group;
@@ -292,76 +296,133 @@ export class World {
     const vertices = this.terrainGeometry.attributes.position.array;
 
     // Define the neighborhood boundary
-    const neighborhoodMargin = 10;
     const neighborhoodSize =
-      Math.floor(this.worldSize / this.blockSize) * this.blockSize +
-      neighborhoodMargin;
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
     const neighborhoodHalfSize = neighborhoodSize / 2;
 
-    // Create a grass material for the forest floor
-    this.terrainMaterial = new THREE.MeshStandardMaterial({
+    // Create separate materials for neighborhood and forest
+    const neighborhoodMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3c3c3c, // Dark gray for the neighborhood
+      roughness: 0.8,
+      metalness: 0.2,
+      flatShading: true,
+    });
+
+    const forestMaterial = new THREE.MeshStandardMaterial({
       color: 0x4caf50, // Green for grass
       roughness: 0.8,
       metalness: 0.1,
       flatShading: true,
     });
 
-    // Create a UV attribute for the terrain geometry
-    const uvs = [];
-    const positionAttribute = this.terrainGeometry.attributes.position;
-    const count = positionAttribute.count;
-
-    for (let i = 0; i < count; i++) {
-      const x = positionAttribute.getX(i);
-      const z = positionAttribute.getZ(i);
-
-      // Normalize coordinates to [0, 1] range for UV mapping
-      const u = (x + this.worldSize / 2) / this.worldSize;
-      const v = (z + this.worldSize / 2) / this.worldSize;
-
-      uvs.push(u, v);
-    }
-
-    this.terrainGeometry.setAttribute(
-      "uv",
-      new THREE.Float32BufferAttribute(uvs, 2)
+    // Create two separate terrain meshes
+    // 1. Neighborhood terrain (flat, gray)
+    const neighborhoodGeometry = new THREE.PlaneGeometry(
+      neighborhoodSize,
+      neighborhoodSize,
+      neighborhoodSize / this.gridSize,
+      neighborhoodSize / this.gridSize
     );
 
-    for (let i = 0; i < vertices.length; i += 3) {
-      const x = vertices[i];
-      const z = vertices[i + 2];
+    // Apply very subtle noise to neighborhood terrain
+    const neighborhoodVertices = neighborhoodGeometry.attributes.position.array;
+    for (let i = 0; i < neighborhoodVertices.length; i += 3) {
+      const x = neighborhoodVertices[i];
+      const z = neighborhoodVertices[i + 2];
 
-      // Check if the vertex is within the neighborhood
-      const isInNeighborhood =
-        Math.abs(x) < neighborhoodHalfSize &&
-        Math.abs(z) < neighborhoodHalfSize;
-
-      // Apply different noise based on whether the vertex is in the neighborhood or forest
-      let elevation;
-
-      if (isInNeighborhood) {
-        // Very subtle noise for the neighborhood (flat terrain)
-        elevation = this.noise.noise(x * 0.01, z * 0.01) * 0.1;
-      } else {
-        // More pronounced noise for the forest (slightly uneven terrain)
-        elevation = this.noise.noise(x * 0.02, z * 0.02) * 0.5;
-      }
-
-      // Set the y-coordinate (height) of the vertex
-      vertices[i + 1] = elevation;
+      // Very subtle noise for flat terrain
+      const elevation = this.noise.noise(x * 0.01, z * 0.01) * 0.1;
+      neighborhoodVertices[i + 1] = elevation;
     }
 
-    // Update the geometry
-    this.terrainGeometry.computeVertexNormals();
-    this.terrainGeometry.attributes.position.needsUpdate = true;
+    neighborhoodGeometry.computeVertexNormals();
+    neighborhoodGeometry.attributes.position.needsUpdate = true;
 
-    // Create a grid helper (only visible in development)
-    // const gridHelper = new THREE.GridHelper(
-    //   this.worldSize,
-    //   this.worldSize / this.gridSize
-    // );
-    // gridHelper.position.y = 0.01;
-    // this.scene.add(gridHelper);
+    const neighborhoodTerrain = new THREE.Mesh(
+      neighborhoodGeometry,
+      neighborhoodMaterial
+    );
+    neighborhoodTerrain.rotation.x = -Math.PI / 2;
+    neighborhoodTerrain.receiveShadow = true;
+    neighborhoodTerrain.position.set(0, 0, 0);
+    this.scene.add(neighborhoodTerrain);
+
+    // 2. Forest terrain (uneven, green)
+    // Create four separate forest sections around the neighborhood
+    this.createForestSection(
+      -neighborhoodHalfSize - this.worldSize / 4,
+      0,
+      this.worldSize / 2,
+      this.worldSize,
+      forestMaterial
+    ); // Left
+    this.createForestSection(
+      neighborhoodHalfSize + this.worldSize / 4,
+      0,
+      this.worldSize / 2,
+      this.worldSize,
+      forestMaterial
+    ); // Right
+    this.createForestSection(
+      0,
+      -neighborhoodHalfSize - this.worldSize / 4,
+      this.worldSize,
+      this.worldSize / 2,
+      forestMaterial
+    ); // Top
+    this.createForestSection(
+      0,
+      neighborhoodHalfSize + this.worldSize / 4,
+      this.worldSize,
+      this.worldSize / 2,
+      forestMaterial
+    ); // Bottom
+
+    // Store the neighborhood size for other methods to use
+    this.neighborhoodSize = neighborhoodSize;
+    this.neighborhoodHalfSize = neighborhoodHalfSize;
+
+    // The original terrain mesh is no longer needed
+    // this.scene.add(this.terrain);
+  }
+
+  private createForestSection(
+    x: number,
+    z: number,
+    width: number,
+    depth: number,
+    material: THREE.Material
+  ): void {
+    const forestGeometry = new THREE.PlaneGeometry(
+      width,
+      depth,
+      width / this.gridSize,
+      depth / this.gridSize
+    );
+
+    // Apply more pronounced noise to forest terrain
+    const forestVertices = forestGeometry.attributes.position.array;
+    for (let i = 0; i < forestVertices.length; i += 3) {
+      const vx = forestVertices[i];
+      const vz = forestVertices[i + 2];
+
+      // Calculate world position
+      const worldX = vx + x;
+      const worldZ = vz + z;
+
+      // More pronounced noise for uneven terrain
+      const elevation = this.noise.noise(worldX * 0.02, worldZ * 0.02) * 0.5;
+      forestVertices[i + 1] = elevation;
+    }
+
+    forestGeometry.computeVertexNormals();
+    forestGeometry.attributes.position.needsUpdate = true;
+
+    const forestTerrain = new THREE.Mesh(forestGeometry, material);
+    forestTerrain.rotation.x = -Math.PI / 2;
+    forestTerrain.receiveShadow = true;
+    forestTerrain.position.set(x, 0, z);
+    this.scene.add(forestTerrain);
   }
 
   private generateRoads(): void {
@@ -371,14 +432,12 @@ export class World {
       metalness: 0.1,
     });
 
-    // Calculate the number of blocks that can fit in the world
-    const halfWorldSize = this.worldSize / 2;
-    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
-    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
-
-    // Define the neighborhood boundary
-    const neighborhoodSize = numBlocksX * this.blockSize;
+    // Calculate the number of blocks that can fit in the neighborhood
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
     const neighborhoodHalfSize = neighborhoodSize / 2;
+    const numBlocksX = Math.floor(neighborhoodSize / this.blockSize);
+    const numBlocksZ = Math.floor(neighborhoodSize / this.blockSize);
 
     // Create horizontal roads (only within the neighborhood)
     for (let i = 0; i <= numBlocksZ; i++) {
@@ -451,13 +510,12 @@ export class World {
       metalness: 0.1,
     });
 
-    const halfWorldSize = this.worldSize / 2;
-    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
-    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
-
-    // Define the neighborhood boundary
-    const neighborhoodSize = numBlocksX * this.blockSize;
+    // Calculate the number of blocks that can fit in the neighborhood
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
     const neighborhoodHalfSize = neighborhoodSize / 2;
+    const numBlocksX = Math.floor(neighborhoodSize / this.blockSize);
+    const numBlocksZ = Math.floor(neighborhoodSize / this.blockSize);
 
     // Create sidewalks along horizontal roads (only within the neighborhood)
     for (let i = 0; i <= numBlocksZ; i++) {
@@ -525,9 +583,12 @@ export class World {
   }
 
   private generateBuildings(): void {
-    const halfWorldSize = this.worldSize / 2;
-    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
-    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+    // Calculate the neighborhood size and blocks
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+    const numBlocksX = Math.floor(neighborhoodSize / this.blockSize);
+    const numBlocksZ = Math.floor(neighborhoodSize / this.blockSize);
 
     // House materials with different colors
     const houseMaterials = [
@@ -570,9 +631,9 @@ export class World {
       for (let blockZ = 0; blockZ < numBlocksZ; blockZ++) {
         // Calculate the block's center position
         const blockCenterX =
-          -halfWorldSize + blockX * this.blockSize + this.blockSize / 2;
+          -neighborhoodHalfSize + blockX * this.blockSize + this.blockSize / 2;
         const blockCenterZ =
-          -halfWorldSize + blockZ * this.blockSize + this.blockSize / 2;
+          -neighborhoodHalfSize + blockZ * this.blockSize + this.blockSize / 2;
 
         // Calculate the usable area within the block (excluding roads and sidewalks)
         const usableWidth =
@@ -834,9 +895,11 @@ export class World {
       metalness: 0.1,
     });
 
-    const halfWorldSize = this.worldSize / 2;
-    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
-    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+    // Calculate the neighborhood size
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
+    const numBlocksX = Math.floor(neighborhoodSize / this.blockSize);
+    const numBlocksZ = Math.floor(neighborhoodSize / this.blockSize);
 
     // 1. Generate forest around the neighborhood
     this.generateForest(
@@ -863,17 +926,79 @@ export class World {
   ): void {
     const halfWorldSize = this.worldSize / 2;
 
-    // Define the neighborhood boundary (slightly larger than the actual neighborhood)
-    const neighborhoodMargin = 10;
-    const neighborhoodSize =
-      Math.floor(this.worldSize / this.blockSize) * this.blockSize +
-      neighborhoodMargin;
-    const neighborhoodHalfSize = neighborhoodSize / 2;
-
     // Number of trees in the forest
     const forestTreeCount = 300;
 
-    for (let i = 0; i < forestTreeCount; i++) {
+    // Create forest trees in each of the four forest sections
+    this.createForestTrees(
+      -this.neighborhoodHalfSize - this.worldSize / 4,
+      0,
+      this.worldSize / 2,
+      this.worldSize,
+      forestTreeCount / 4,
+      trunkGeometry,
+      trunkMaterial,
+      topGeometry,
+      topMaterial
+    ); // Left
+
+    this.createForestTrees(
+      this.neighborhoodHalfSize + this.worldSize / 4,
+      0,
+      this.worldSize / 2,
+      this.worldSize,
+      forestTreeCount / 4,
+      trunkGeometry,
+      trunkMaterial,
+      topGeometry,
+      topMaterial
+    ); // Right
+
+    this.createForestTrees(
+      0,
+      -this.neighborhoodHalfSize - this.worldSize / 4,
+      this.worldSize,
+      this.worldSize / 2,
+      forestTreeCount / 4,
+      trunkGeometry,
+      trunkMaterial,
+      topGeometry,
+      topMaterial
+    ); // Top
+
+    this.createForestTrees(
+      0,
+      this.neighborhoodHalfSize + this.worldSize / 4,
+      this.worldSize,
+      this.worldSize / 2,
+      forestTreeCount / 4,
+      trunkGeometry,
+      trunkMaterial,
+      topGeometry,
+      topMaterial
+    ); // Bottom
+  }
+
+  private createForestTrees(
+    sectionX: number,
+    sectionZ: number,
+    sectionWidth: number,
+    sectionDepth: number,
+    treeCount: number,
+    trunkGeometry: THREE.CylinderGeometry,
+    trunkMaterial: THREE.MeshStandardMaterial,
+    topGeometry: THREE.ConeGeometry | THREE.SphereGeometry,
+    topMaterial: THREE.MeshStandardMaterial
+  ): void {
+    // Calculate section boundaries
+    const halfWidth = sectionWidth / 2;
+    const halfDepth = sectionDepth / 2;
+    const minX = sectionX - halfWidth;
+    const maxX = sectionX + halfWidth;
+    const minZ = sectionZ - halfDepth;
+    const maxZ = sectionZ + halfDepth;
+
+    for (let i = 0; i < treeCount; i++) {
       // Create a tree
       const tree = this.createTree(
         trunkGeometry,
@@ -882,48 +1007,24 @@ export class World {
         topMaterial
       );
 
-      // Position the tree outside the neighborhood but within the world bounds
-      let x, z;
-      let validPosition = false;
-      let attempts = 0;
+      // Position the tree randomly within this forest section
+      const x = minX + Math.random() * sectionWidth;
+      const z = minZ + Math.random() * sectionDepth;
 
-      while (!validPosition && attempts < 10) {
-        // Generate a position within the world bounds
-        x = (Math.random() - 0.5) * this.worldSize;
-        z = (Math.random() - 0.5) * this.worldSize;
+      // Get the terrain height at this position
+      const terrainHeight = this.getTerrainHeightAt(x, z);
 
-        // Check if the position is outside the neighborhood
-        const isOutsideNeighborhood =
-          Math.abs(x) > neighborhoodHalfSize - 5 ||
-          Math.abs(z) > neighborhoodHalfSize - 5;
+      // Position the tree
+      tree.position.set(x, terrainHeight, z);
 
-        // Check if the position is within the world bounds
-        const isWithinWorldBounds =
-          Math.abs(x) < halfWorldSize - 2 && Math.abs(z) < halfWorldSize - 2;
+      // Add some random rotation
+      tree.rotation.y = Math.random() * Math.PI * 2;
 
-        if (isOutsideNeighborhood && isWithinWorldBounds) {
-          validPosition = true;
-        }
+      // Add some random scaling for dense forest feel
+      const scale = 0.8 + Math.random() * 0.7;
+      tree.scale.set(scale, scale, scale);
 
-        attempts++;
-      }
-
-      if (validPosition) {
-        // Get the terrain height at this position
-        const terrainHeight = this.getTerrainHeightAt(x!, z!);
-
-        // Position the tree
-        tree.position.set(x!, terrainHeight, z!);
-
-        // Add some random rotation
-        tree.rotation.y = Math.random() * Math.PI * 2;
-
-        // Add some random scaling for dense forest feel
-        const scale = 0.8 + Math.random() * 0.7;
-        tree.scale.set(scale, scale, scale);
-
-        this.trees.add(tree);
-      }
+      this.trees.add(tree);
     }
   }
 
@@ -933,18 +1034,21 @@ export class World {
     topGeometry: THREE.SphereGeometry,
     topMaterial: THREE.MeshStandardMaterial
   ): void {
-    const halfWorldSize = this.worldSize / 2;
-    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
-    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+    // Calculate the neighborhood size
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+    const numBlocksX = Math.floor(neighborhoodSize / this.blockSize);
+    const numBlocksZ = Math.floor(neighborhoodSize / this.blockSize);
 
     // For each block in the grid
     for (let blockX = 0; blockX < numBlocksX; blockX++) {
       for (let blockZ = 0; blockZ < numBlocksZ; blockZ++) {
         // Calculate the block's center position
         const blockCenterX =
-          -halfWorldSize + blockX * this.blockSize + this.blockSize / 2;
+          -neighborhoodHalfSize + blockX * this.blockSize + this.blockSize / 2;
         const blockCenterZ =
-          -halfWorldSize + blockZ * this.blockSize + this.blockSize / 2;
+          -neighborhoodHalfSize + blockZ * this.blockSize + this.blockSize / 2;
 
         // Calculate the usable area within the block (excluding roads and sidewalks)
         const usableWidth =
@@ -1041,13 +1145,24 @@ export class World {
   }
 
   private isNearRoad(x: number, z: number): boolean {
-    const halfWorldSize = this.worldSize / 2;
-    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
-    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+    // Calculate the neighborhood size
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+    const numBlocksX = Math.floor(neighborhoodSize / this.blockSize);
+    const numBlocksZ = Math.floor(neighborhoodSize / this.blockSize);
+
+    // Check if the position is outside the neighborhood
+    if (
+      Math.abs(x) > neighborhoodHalfSize ||
+      Math.abs(z) > neighborhoodHalfSize
+    ) {
+      return false; // No roads outside the neighborhood
+    }
 
     // Check distance to horizontal roads
     for (let i = 0; i <= numBlocksZ; i++) {
-      const roadZ = -halfWorldSize + i * this.blockSize;
+      const roadZ = -neighborhoodHalfSize + i * this.blockSize;
       const distance = Math.abs(z - roadZ);
 
       if (distance < this.roadWidth / 2 + 2) {
@@ -1057,7 +1172,7 @@ export class World {
 
     // Check distance to vertical roads
     for (let i = 0; i <= numBlocksX; i++) {
-      const roadX = -halfWorldSize + i * this.blockSize;
+      const roadX = -neighborhoodHalfSize + i * this.blockSize;
       const distance = Math.abs(x - roadX);
 
       if (distance < this.roadWidth / 2 + 2) {
@@ -1101,18 +1216,21 @@ export class World {
       metalness: 0.3,
     });
 
-    const halfWorldSize = this.worldSize / 2;
-    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
-    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+    // Calculate the neighborhood size
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+    const numBlocksX = Math.floor(neighborhoodSize / this.blockSize);
+    const numBlocksZ = Math.floor(neighborhoodSize / this.blockSize);
 
     // Place obstacles in each block
     for (let blockX = 0; blockX < numBlocksX; blockX++) {
       for (let blockZ = 0; blockZ < numBlocksZ; blockZ++) {
         // Calculate the block's center position
         const blockCenterX =
-          -halfWorldSize + blockX * this.blockSize + this.blockSize / 2;
+          -neighborhoodHalfSize + blockX * this.blockSize + this.blockSize / 2;
         const blockCenterZ =
-          -halfWorldSize + blockZ * this.blockSize + this.blockSize / 2;
+          -neighborhoodHalfSize + blockZ * this.blockSize + this.blockSize / 2;
 
         // Add mailboxes and trash cans near houses
         this.addHouseholdObstacles(
@@ -1143,6 +1261,19 @@ export class World {
     mailboxBoxGeometry: THREE.BoxGeometry,
     mailboxMaterial: THREE.MeshStandardMaterial
   ): void {
+    // Calculate the neighborhood size
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+
+    // Skip if the block is outside the neighborhood
+    if (
+      Math.abs(blockCenterX) > neighborhoodHalfSize ||
+      Math.abs(blockCenterZ) > neighborhoodHalfSize
+    ) {
+      return;
+    }
+
     // Calculate the usable area within the block (excluding roads and sidewalks)
     const usableWidth =
       this.blockSize - (this.roadWidth + this.sidewalkWidth * 2);
@@ -1217,19 +1348,69 @@ export class World {
     rockGeometries: THREE.DodecahedronGeometry[],
     rockMaterial: THREE.MeshStandardMaterial
   ): void {
-    const halfWorldSize = this.worldSize / 2;
-
-    // Define the neighborhood boundary (slightly larger than the actual neighborhood)
-    const neighborhoodMargin = 10;
-    const neighborhoodSize =
-      Math.floor(this.worldSize / this.blockSize) * this.blockSize +
-      neighborhoodMargin;
-    const neighborhoodHalfSize = neighborhoodSize / 2;
-
     // Number of rocks in the forest
     const forestRockCount = 100;
 
-    for (let i = 0; i < forestRockCount; i++) {
+    // Create forest rocks in each of the four forest sections
+    this.createForestRocks(
+      -this.neighborhoodHalfSize - this.worldSize / 4,
+      0,
+      this.worldSize / 2,
+      this.worldSize,
+      forestRockCount / 4,
+      rockGeometries,
+      rockMaterial
+    ); // Left
+
+    this.createForestRocks(
+      this.neighborhoodHalfSize + this.worldSize / 4,
+      0,
+      this.worldSize / 2,
+      this.worldSize,
+      forestRockCount / 4,
+      rockGeometries,
+      rockMaterial
+    ); // Right
+
+    this.createForestRocks(
+      0,
+      -this.neighborhoodHalfSize - this.worldSize / 4,
+      this.worldSize,
+      this.worldSize / 2,
+      forestRockCount / 4,
+      rockGeometries,
+      rockMaterial
+    ); // Top
+
+    this.createForestRocks(
+      0,
+      this.neighborhoodHalfSize + this.worldSize / 4,
+      this.worldSize,
+      this.worldSize / 2,
+      forestRockCount / 4,
+      rockGeometries,
+      rockMaterial
+    ); // Bottom
+  }
+
+  private createForestRocks(
+    sectionX: number,
+    sectionZ: number,
+    sectionWidth: number,
+    sectionDepth: number,
+    rockCount: number,
+    rockGeometries: THREE.DodecahedronGeometry[],
+    rockMaterial: THREE.MeshStandardMaterial
+  ): void {
+    // Calculate section boundaries
+    const halfWidth = sectionWidth / 2;
+    const halfDepth = sectionDepth / 2;
+    const minX = sectionX - halfWidth;
+    const maxX = sectionX + halfWidth;
+    const minZ = sectionZ - halfDepth;
+    const maxZ = sectionZ + halfDepth;
+
+    for (let i = 0; i < rockCount; i++) {
       // Choose a random rock geometry
       const rockGeometry =
         rockGeometries[Math.floor(Math.random() * rockGeometries.length)];
@@ -1238,50 +1419,26 @@ export class World {
       rock.castShadow = true;
       rock.receiveShadow = true;
 
-      // Position the rock outside the neighborhood but within the world bounds
-      let x, z;
-      let validPosition = false;
-      let attempts = 0;
+      // Position the rock randomly within this forest section
+      const x = minX + Math.random() * sectionWidth;
+      const z = minZ + Math.random() * sectionDepth;
 
-      while (!validPosition && attempts < 10) {
-        // Generate a position within the world bounds
-        x = (Math.random() - 0.5) * this.worldSize;
-        z = (Math.random() - 0.5) * this.worldSize;
+      // Get the terrain height at this position
+      const terrainHeight = this.getTerrainHeightAt(x, z);
 
-        // Check if the position is outside the neighborhood
-        const isOutsideNeighborhood =
-          Math.abs(x) > neighborhoodHalfSize - 5 ||
-          Math.abs(z) > neighborhoodHalfSize - 5;
+      // Position the rock
+      rock.position.set(x, terrainHeight + 0.3, z);
 
-        // Check if the position is within the world bounds
-        const isWithinWorldBounds =
-          Math.abs(x) < halfWorldSize - 2 && Math.abs(z) < halfWorldSize - 2;
+      // Add some random rotation
+      rock.rotation.x = Math.random() * Math.PI;
+      rock.rotation.y = Math.random() * Math.PI;
+      rock.rotation.z = Math.random() * Math.PI;
 
-        if (isOutsideNeighborhood && isWithinWorldBounds) {
-          validPosition = true;
-        }
+      // Add some random scaling
+      const scale = 0.5 + Math.random() * 1.5;
+      rock.scale.set(scale, scale, scale);
 
-        attempts++;
-      }
-
-      if (validPosition) {
-        // Get the terrain height at this position
-        const terrainHeight = this.getTerrainHeightAt(x!, z!);
-
-        // Position the rock
-        rock.position.set(x!, terrainHeight + 0.3, z!);
-
-        // Add some random rotation
-        rock.rotation.x = Math.random() * Math.PI;
-        rock.rotation.y = Math.random() * Math.PI;
-        rock.rotation.z = Math.random() * Math.PI;
-
-        // Add some random scaling
-        const scale = 0.5 + Math.random() * 1.5;
-        rock.scale.set(scale, scale, scale);
-
-        this.obstacles.add(rock);
-      }
+      this.obstacles.add(rock);
     }
   }
 
@@ -1289,9 +1446,12 @@ export class World {
     rockGeometries: THREE.DodecahedronGeometry[],
     rockMaterial: THREE.MeshStandardMaterial
   ): void {
-    const halfWorldSize = this.worldSize / 2;
-    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
-    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+    // Calculate the neighborhood size
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+    const numBlocksX = Math.floor(neighborhoodSize / this.blockSize);
+    const numBlocksZ = Math.floor(neighborhoodSize / this.blockSize);
 
     // Add debris along roads
     const debrisCount = 30; // Reduced from 40 to make it less cluttered
@@ -1343,19 +1503,19 @@ export class World {
       if (Math.random() < 0.5) {
         // Horizontal road
         const roadIndex = Math.floor(Math.random() * (numBlocksZ + 1));
-        const roadZ = -halfWorldSize + roadIndex * this.blockSize;
+        const roadZ = -neighborhoodHalfSize + roadIndex * this.blockSize;
 
         // Random position along the road
-        x = (Math.random() - 0.5) * this.worldSize;
+        x = (Math.random() - 0.5) * neighborhoodSize;
         z = roadZ + (Math.random() - 0.5) * this.roadWidth * 0.8;
       } else {
         // Vertical road
         const roadIndex = Math.floor(Math.random() * (numBlocksX + 1));
-        const roadX = -halfWorldSize + roadIndex * this.blockSize;
+        const roadX = -neighborhoodHalfSize + roadIndex * this.blockSize;
 
         // Random position along the road
         x = roadX + (Math.random() - 0.5) * this.roadWidth * 0.8;
-        z = (Math.random() - 0.5) * this.worldSize;
+        z = (Math.random() - 0.5) * neighborhoodSize;
       }
 
       // Get the terrain height at this position
@@ -1377,9 +1537,19 @@ export class World {
   }
 
   private getTerrainHeightAt(x: number, z: number): number {
-    // Calculate the terrain height at a given world position
-    // This is a simplified version that uses the same noise function as the terrain generation
-    return this.noise.noise(x * 0.02, z * 0.02) * 0.5;
+    // Check if the position is within the neighborhood
+    const isInNeighborhood =
+      Math.abs(x) < this.neighborhoodHalfSize &&
+      Math.abs(z) < this.neighborhoodHalfSize;
+
+    // Apply different noise based on whether the position is in the neighborhood or forest
+    if (isInNeighborhood) {
+      // Very subtle noise for the neighborhood (flat terrain)
+      return this.noise.noise(x * 0.01, z * 0.01) * 0.1;
+    } else {
+      // More pronounced noise for the forest (slightly uneven terrain)
+      return this.noise.noise(x * 0.02, z * 0.02) * 0.5;
+    }
   }
 
   public getWorldSize(): number {
