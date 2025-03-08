@@ -271,7 +271,16 @@ export class Player {
     // Update attack cooldown
     if (this.timeSinceLastAttack < this.attackCooldown) {
       this.timeSinceLastAttack += delta;
+      console.log(
+        "Cooldown: ",
+        this.timeSinceLastAttack,
+        "/",
+        this.attackCooldown
+      );
     }
+
+    // Update TWEEN animations
+    TWEEN.update();
 
     // Decrease hunger over time
     this.hunger -= 0.01;
@@ -498,8 +507,18 @@ export class Player {
 
   public attack(zombies: Zombie[]): void {
     // Check if we can attack
-    if (this.timeSinceLastAttack < this.attackCooldown || this.isAttacking) {
-      console.log("Attack on cooldown or already attacking");
+    if (this.timeSinceLastAttack < this.attackCooldown) {
+      console.log(
+        "Attack on cooldown: ",
+        this.timeSinceLastAttack,
+        "/",
+        this.attackCooldown
+      );
+      return;
+    }
+
+    if (this.isAttacking) {
+      console.log("Already attacking");
       return;
     }
 
@@ -604,6 +623,7 @@ export class Player {
         })
         .onComplete(() => {
           this.isAttacking = false;
+          console.log("Attack animation completed");
         })
         .start();
     });

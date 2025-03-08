@@ -305,11 +305,16 @@ export class Zombie {
   }
 
   public takeDamage(amount: number): void {
+    console.log("Zombie taking damage:", amount);
+    console.log("Current health:", this.health);
+
     this.health -= amount;
+    console.log("New health:", this.health);
 
     // Check if dead
     if (this.health <= 0) {
       this.health = 0;
+      console.log("Zombie died!");
       this.die();
     }
 
