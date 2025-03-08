@@ -291,12 +291,61 @@ export class World {
     // Apply noise to the terrain vertices
     const vertices = this.terrainGeometry.attributes.position.array;
 
+    // Define the neighborhood boundary
+    const neighborhoodMargin = 10;
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize +
+      neighborhoodMargin;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+
+    // Create a grass material for the forest floor
+    this.terrainMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4caf50, // Green for grass
+      roughness: 0.8,
+      metalness: 0.1,
+      flatShading: true,
+    });
+
+    // Create a UV attribute for the terrain geometry
+    const uvs = [];
+    const positionAttribute = this.terrainGeometry.attributes.position;
+    const count = positionAttribute.count;
+
+    for (let i = 0; i < count; i++) {
+      const x = positionAttribute.getX(i);
+      const z = positionAttribute.getZ(i);
+
+      // Normalize coordinates to [0, 1] range for UV mapping
+      const u = (x + this.worldSize / 2) / this.worldSize;
+      const v = (z + this.worldSize / 2) / this.worldSize;
+
+      uvs.push(u, v);
+    }
+
+    this.terrainGeometry.setAttribute(
+      "uv",
+      new THREE.Float32BufferAttribute(uvs, 2)
+    );
+
     for (let i = 0; i < vertices.length; i += 3) {
       const x = vertices[i];
       const z = vertices[i + 2];
 
-      // Apply very subtle simplex noise for a mostly flat terrain with slight variations
-      const elevation = this.noise.noise(x * 0.01, z * 0.01) * 0.2;
+      // Check if the vertex is within the neighborhood
+      const isInNeighborhood =
+        Math.abs(x) < neighborhoodHalfSize &&
+        Math.abs(z) < neighborhoodHalfSize;
+
+      // Apply different noise based on whether the vertex is in the neighborhood or forest
+      let elevation;
+
+      if (isInNeighborhood) {
+        // Very subtle noise for the neighborhood (flat terrain)
+        elevation = this.noise.noise(x * 0.01, z * 0.01) * 0.1;
+      } else {
+        // More pronounced noise for the forest (slightly uneven terrain)
+        elevation = this.noise.noise(x * 0.02, z * 0.02) * 0.5;
+      }
 
       // Set the y-coordinate (height) of the vertex
       vertices[i + 1] = elevation;
@@ -306,13 +355,13 @@ export class World {
     this.terrainGeometry.computeVertexNormals();
     this.terrainGeometry.attributes.position.needsUpdate = true;
 
-    // Create a grid helper
-    const gridHelper = new THREE.GridHelper(
-      this.worldSize,
-      this.worldSize / this.gridSize
-    );
-    gridHelper.position.y = 0.01;
-    this.scene.add(gridHelper);
+    // Create a grid helper (only visible in development)
+    // const gridHelper = new THREE.GridHelper(
+    //   this.worldSize,
+    //   this.worldSize / this.gridSize
+    // );
+    // gridHelper.position.y = 0.01;
+    // this.scene.add(gridHelper);
   }
 
   private generateRoads(): void {
@@ -327,11 +376,19 @@ export class World {
     const numBlocksX = Math.floor(this.worldSize / this.blockSize);
     const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
 
-    // Create horizontal roads
+    // Define the neighborhood boundary
+    const neighborhoodSize = numBlocksX * this.blockSize;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+
+    // Create horizontal roads (only within the neighborhood)
     for (let i = 0; i <= numBlocksZ; i++) {
-      const z = -halfWorldSize + i * this.blockSize;
+      const z = -neighborhoodHalfSize + i * this.blockSize;
+
+      // Skip if outside the neighborhood
+      if (Math.abs(z) > neighborhoodHalfSize) continue;
+
       const roadGeometry = new THREE.BoxGeometry(
-        this.worldSize,
+        neighborhoodSize,
         0.1,
         this.roadWidth
       );
@@ -340,13 +397,17 @@ export class World {
       this.roads.add(road);
     }
 
-    // Create vertical roads
+    // Create vertical roads (only within the neighborhood)
     for (let i = 0; i <= numBlocksX; i++) {
-      const x = -halfWorldSize + i * this.blockSize;
+      const x = -neighborhoodHalfSize + i * this.blockSize;
+
+      // Skip if outside the neighborhood
+      if (Math.abs(x) > neighborhoodHalfSize) continue;
+
       const roadGeometry = new THREE.BoxGeometry(
         this.roadWidth,
         0.1,
-        this.worldSize
+        neighborhoodSize
       );
       const road = new THREE.Mesh(roadGeometry, roadMaterial);
       road.position.set(x, 0.05, 0);
@@ -358,8 +419,12 @@ export class World {
 
     // Horizontal road markings
     for (let i = 0; i <= numBlocksZ; i++) {
-      const z = -halfWorldSize + i * this.blockSize;
-      const lineGeometry = new THREE.BoxGeometry(this.worldSize, 0.05, 0.3);
+      const z = -neighborhoodHalfSize + i * this.blockSize;
+
+      // Skip if outside the neighborhood
+      if (Math.abs(z) > neighborhoodHalfSize) continue;
+
+      const lineGeometry = new THREE.BoxGeometry(neighborhoodSize, 0.05, 0.3);
       const line = new THREE.Mesh(lineGeometry, linesMaterial);
       line.position.set(0, 0.1, z);
       this.roads.add(line);
@@ -367,8 +432,12 @@ export class World {
 
     // Vertical road markings
     for (let i = 0; i <= numBlocksX; i++) {
-      const x = -halfWorldSize + i * this.blockSize;
-      const lineGeometry = new THREE.BoxGeometry(0.3, 0.05, this.worldSize);
+      const x = -neighborhoodHalfSize + i * this.blockSize;
+
+      // Skip if outside the neighborhood
+      if (Math.abs(x) > neighborhoodHalfSize) continue;
+
+      const lineGeometry = new THREE.BoxGeometry(0.3, 0.05, neighborhoodSize);
       const line = new THREE.Mesh(lineGeometry, linesMaterial);
       line.position.set(x, 0.1, 0);
       this.roads.add(line);
@@ -386,13 +455,20 @@ export class World {
     const numBlocksX = Math.floor(this.worldSize / this.blockSize);
     const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
 
-    // Create sidewalks along horizontal roads
+    // Define the neighborhood boundary
+    const neighborhoodSize = numBlocksX * this.blockSize;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+
+    // Create sidewalks along horizontal roads (only within the neighborhood)
     for (let i = 0; i <= numBlocksZ; i++) {
-      const z = -halfWorldSize + i * this.blockSize;
+      const z = -neighborhoodHalfSize + i * this.blockSize;
+
+      // Skip if outside the neighborhood
+      if (Math.abs(z) > neighborhoodHalfSize) continue;
 
       // Sidewalk above the road
       const sidewalkTop = new THREE.Mesh(
-        new THREE.BoxGeometry(this.worldSize, 0.15, this.sidewalkWidth),
+        new THREE.BoxGeometry(neighborhoodSize, 0.15, this.sidewalkWidth),
         sidewalkMaterial
       );
       sidewalkTop.position.set(
@@ -404,7 +480,7 @@ export class World {
 
       // Sidewalk below the road
       const sidewalkBottom = new THREE.Mesh(
-        new THREE.BoxGeometry(this.worldSize, 0.15, this.sidewalkWidth),
+        new THREE.BoxGeometry(neighborhoodSize, 0.15, this.sidewalkWidth),
         sidewalkMaterial
       );
       sidewalkBottom.position.set(
@@ -415,13 +491,16 @@ export class World {
       this.sidewalks.add(sidewalkBottom);
     }
 
-    // Create sidewalks along vertical roads
+    // Create sidewalks along vertical roads (only within the neighborhood)
     for (let i = 0; i <= numBlocksX; i++) {
-      const x = -halfWorldSize + i * this.blockSize;
+      const x = -neighborhoodHalfSize + i * this.blockSize;
+
+      // Skip if outside the neighborhood
+      if (Math.abs(x) > neighborhoodHalfSize) continue;
 
       // Sidewalk to the left of the road
       const sidewalkLeft = new THREE.Mesh(
-        new THREE.BoxGeometry(this.sidewalkWidth, 0.15, this.worldSize),
+        new THREE.BoxGeometry(this.sidewalkWidth, 0.15, neighborhoodSize),
         sidewalkMaterial
       );
       sidewalkLeft.position.set(
@@ -433,7 +512,7 @@ export class World {
 
       // Sidewalk to the right of the road
       const sidewalkRight = new THREE.Mesh(
-        new THREE.BoxGeometry(this.sidewalkWidth, 0.15, this.worldSize),
+        new THREE.BoxGeometry(this.sidewalkWidth, 0.15, neighborhoodSize),
         sidewalkMaterial
       );
       sidewalkRight.position.set(
