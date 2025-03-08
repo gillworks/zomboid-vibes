@@ -137,6 +137,25 @@ export class Game {
 
     // Start the animation loop
     this.animate();
+
+    // Manually trigger the loading completion since we're not loading external assets
+    setTimeout(() => {
+      // Simulate loading progress
+      const progressBar = document.getElementById("progress-bar");
+      if (progressBar) {
+        progressBar.style.width = "100%";
+      }
+
+      const loadingText = document.getElementById("loading-text");
+      if (loadingText) {
+        loadingText.textContent = "Loading... 100%";
+      }
+
+      // Trigger the onLoad callback
+      if (this.loadingManager.onLoad) {
+        this.loadingManager.onLoad();
+      }
+    }, 1500); // Give a short delay to show the loading screen
   }
 
   private setupLights(): void {
