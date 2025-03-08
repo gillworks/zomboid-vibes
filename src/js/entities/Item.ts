@@ -90,7 +90,7 @@ export class Item {
   }
 
   public setPosition(x: number, y: number, z: number): void {
-    this.itemMesh.position.set(x, y + 0.5, z); // Lift slightly above ground
+    this.itemMesh.position.set(x, y + 1.0, z); // Lift slightly above ground
   }
 
   public getPosition(): THREE.Vector3 {
