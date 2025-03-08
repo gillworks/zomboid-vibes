@@ -601,24 +601,30 @@ export class Player {
       rightArmOriginalRotation
     );
 
-    // Directly set the arm rotations for the forward swing
-    this.leftArm.rotation.x = -Math.PI / 2;
-    this.rightArm.rotation.x = -Math.PI / 2;
+    // Make a more dramatic rotation - rotate arms forward and slightly outward
+    this.leftArm.rotation.x = -Math.PI / 1.5; // More extreme forward rotation
+    this.rightArm.rotation.x = -Math.PI / 1.5;
 
-    console.log("Arms rotated forward");
+    // Add some rotation on other axes for more dramatic effect
+    this.leftArm.rotation.z = -Math.PI / 6; // Rotate outward
+    this.rightArm.rotation.z = Math.PI / 6;
+
+    console.log("Arms rotated for attack");
 
     // Use setTimeout to return the arms to their original position after a delay
     setTimeout(() => {
       // Return arms to original position
       this.leftArm.rotation.x = leftArmOriginalRotation.x;
       this.rightArm.rotation.x = rightArmOriginalRotation.x;
+      this.leftArm.rotation.z = leftArmOriginalRotation.z;
+      this.rightArm.rotation.z = rightArmOriginalRotation.z;
 
       console.log("Arms returned to original position");
 
       // Reset the attacking flag
       this.isAttacking = false;
       console.log("Attack animation completed");
-    }, 300);
+    }, 400); // Slightly longer delay for more visibility
   }
 
   public canAttack(): boolean {
