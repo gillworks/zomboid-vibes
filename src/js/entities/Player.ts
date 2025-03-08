@@ -319,16 +319,16 @@ export class Player {
     // Update TWEEN animations
     TWEEN.update();
 
-    // Decrease hunger over time
-    this.hunger -= 0.01;
+    // Decrease hunger over time (rate cut by half)
+    this.hunger -= 0.005;
     if (this.hunger < 0) {
       this.hunger = 0;
       // Start taking damage when starving
       this.takeDamage(0.05, "starvation");
     }
 
-    // Decrease thirst over time (slightly faster than hunger)
-    this.thirst -= 0.015;
+    // Decrease thirst over time (slightly faster than hunger, rate cut by half)
+    this.thirst -= 0.0075;
     if (this.thirst < 0) {
       this.thirst = 0;
       // Start taking damage when dehydrated
