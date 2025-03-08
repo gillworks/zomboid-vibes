@@ -71,7 +71,7 @@ export class Player {
 
     // Set initial position to the center of a road intersection
     // This ensures the player starts in an open area without collisions
-    this.playerGroup.position.set(0, 0, 0);
+    this.playerGroup.position.set(0, 0.15, 0); // Raised to be above roads and sidewalks
 
     // Update camera position immediately
     this.updateCameraPosition();
@@ -521,7 +521,7 @@ export class Player {
     this.causeOfDeath = ""; // Reset cause of death
 
     // Reset position
-    this.playerGroup.position.set(0, 0, 0);
+    this.playerGroup.position.set(0, 0.15, 0); // Raised to be above roads and sidewalks
     this.playerGroup.rotation.set(0, 0, 0);
 
     // Reset animation

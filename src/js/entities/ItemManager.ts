@@ -107,7 +107,9 @@ export class ItemManager {
       itemType.color
     );
 
-    item.setPosition(x, 0, z);
+    // Position the item with a slight height to ensure it's above the terrain
+    // The Item class already adds 0.5 to the y value
+    item.setPosition(x, 0.15, z);
 
     // Add to the list
     this.items.push(item);
