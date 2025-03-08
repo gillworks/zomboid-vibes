@@ -312,7 +312,7 @@ export class World {
       color: 0x4caf50, // Green for grass
       roughness: 0.8,
       metalness: 0.1,
-      flatShading: false, // Smooth shading for grass
+      flatShading: true,
     });
 
     // Create two separate terrain meshes
@@ -396,8 +396,8 @@ export class World {
     const forestGeometry = new THREE.PlaneGeometry(
       width,
       depth,
-      Math.max(10, width / this.gridSize),
-      Math.max(10, depth / this.gridSize)
+      width / this.gridSize,
+      depth / this.gridSize
     );
 
     // Apply more pronounced noise to forest terrain
@@ -422,10 +422,6 @@ export class World {
     forestTerrain.rotation.x = -Math.PI / 2;
     forestTerrain.receiveShadow = true;
     forestTerrain.position.set(x, 0, z);
-
-    // Ensure the forest terrain is visible by setting renderOrder
-    forestTerrain.renderOrder = -1;
-
     this.scene.add(forestTerrain);
   }
 
@@ -1188,7 +1184,7 @@ export class World {
   }
 
   private generateObstacles(): void {
-    // Create obstacles like rocks, debris, trash cans, mailboxes, etc.
+    // Create obstacles like rocks, trash cans, mailboxes, etc.
 
     // Rock geometry
     const rockGeometries = [
@@ -1252,8 +1248,7 @@ export class World {
     // Add rocks to the forest area
     this.addForestRocks(rockGeometries, rockMaterial);
 
-    // Add some debris along roads
-    this.addRoadDebris(rockGeometries, rockMaterial);
+    // Road debris removed as it's not needed at this stage
   }
 
   private addHouseholdObstacles(
@@ -1443,100 +1438,6 @@ export class World {
       rock.scale.set(scale, scale, scale);
 
       this.obstacles.add(rock);
-    }
-  }
-
-  private addRoadDebris(
-    rockGeometries: THREE.DodecahedronGeometry[],
-    rockMaterial: THREE.MeshStandardMaterial
-  ): void {
-    // Calculate the neighborhood size
-    const neighborhoodSize =
-      Math.floor(this.worldSize / this.blockSize) * this.blockSize;
-    const neighborhoodHalfSize = neighborhoodSize / 2;
-    const numBlocksX = Math.floor(neighborhoodSize / this.blockSize);
-    const numBlocksZ = Math.floor(neighborhoodSize / this.blockSize);
-
-    // Add debris along roads
-    const debrisCount = 30; // Reduced from 40 to make it less cluttered
-
-    // Create materials for different types of debris
-    const paperMaterial = new THREE.MeshStandardMaterial({
-      color: 0xf5f5f5, // White
-      roughness: 0.9,
-      metalness: 0.1,
-    });
-
-    const canMaterial = new THREE.MeshStandardMaterial({
-      color: 0xc0c0c0, // Silver
-      roughness: 0.4,
-      metalness: 0.8,
-    });
-
-    for (let i = 0; i < debrisCount; i++) {
-      // Choose a random debris type
-      let debrisGeometry;
-      let debrisMaterial;
-
-      const debrisType = Math.floor(Math.random() * 3);
-      switch (debrisType) {
-        case 0: // Small rock
-          debrisGeometry =
-            rockGeometries[Math.floor(Math.random() * rockGeometries.length)];
-          debrisMaterial = rockMaterial;
-          break;
-        case 1: // Paper/trash
-          debrisGeometry = new THREE.PlaneGeometry(0.3, 0.3);
-          debrisMaterial = paperMaterial;
-          break;
-        case 2: // Can
-          debrisGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.2, 8);
-          debrisMaterial = canMaterial;
-          break;
-      }
-
-      const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
-
-      debris.castShadow = true;
-      debris.receiveShadow = true;
-
-      // Position the debris near a random road
-      let x, z;
-
-      // Decide whether to place along a horizontal or vertical road
-      if (Math.random() < 0.5) {
-        // Horizontal road
-        const roadIndex = Math.floor(Math.random() * (numBlocksZ + 1));
-        const roadZ = -neighborhoodHalfSize + roadIndex * this.blockSize;
-
-        // Random position along the road
-        x = (Math.random() - 0.5) * neighborhoodSize;
-        z = roadZ + (Math.random() - 0.5) * this.roadWidth * 0.8;
-      } else {
-        // Vertical road
-        const roadIndex = Math.floor(Math.random() * (numBlocksX + 1));
-        const roadX = -neighborhoodHalfSize + roadIndex * this.blockSize;
-
-        // Random position along the road
-        x = roadX + (Math.random() - 0.5) * this.roadWidth * 0.8;
-        z = (Math.random() - 0.5) * neighborhoodSize;
-      }
-
-      // Get the terrain height at this position
-      const terrainHeight = this.getTerrainHeightAt(x, z);
-
-      debris.position.set(x, terrainHeight + 0.05, z);
-
-      // Add some random rotation
-      debris.rotation.x = Math.random() * Math.PI;
-      debris.rotation.y = Math.random() * Math.PI;
-      debris.rotation.z = Math.random() * Math.PI;
-
-      // Make debris smaller
-      const scale = 0.2 + Math.random() * 0.2;
-      debris.scale.set(scale, scale, scale);
-
-      this.obstacles.add(debris);
     }
   }
 
