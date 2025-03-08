@@ -96,27 +96,40 @@ export class Zombie {
 
     // Arms - thinner and more angular, slightly longer for zombie reach
     // Left arm
-    const armGeometry = new THREE.BoxGeometry(0.2, 0.7, 0.2);
+    const armGeometry = new THREE.BoxGeometry(0.2, 0.6, 0.2);
     const armMaterial = new THREE.MeshStandardMaterial({
       color: 0x4a6e4a, // Match zombie body
       roughness: 0.8,
       metalness: 0.2,
     });
 
+    // Create arm groups to allow for better positioning
+    const leftArmGroup = new THREE.Group();
+    leftArmGroup.position.set(-0.4, 1.1, 0);
+    // Rotate arm group slightly downward and outward for zombie pose
+    leftArmGroup.rotation.z = 0.4;
+    leftArmGroup.rotation.x = 0.2;
+    characterGroup.add(leftArmGroup);
+
     const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    leftArm.position.set(-0.45, 0.9, 0);
-    // Rotate arm slightly outward for zombie pose
-    leftArm.rotation.z = 0.3;
+    // Position relative to the arm group
+    leftArm.position.set(0, -0.3, 0);
     leftArm.castShadow = true;
-    characterGroup.add(leftArm);
+    leftArmGroup.add(leftArm);
 
     // Right arm
+    const rightArmGroup = new THREE.Group();
+    rightArmGroup.position.set(0.4, 1.1, 0);
+    // Rotate arm group slightly downward and outward for zombie pose
+    rightArmGroup.rotation.z = -0.4;
+    rightArmGroup.rotation.x = 0.2;
+    characterGroup.add(rightArmGroup);
+
     const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-    rightArm.position.set(0.45, 0.9, 0);
-    // Rotate arm slightly outward for zombie pose
-    rightArm.rotation.z = -0.3;
+    // Position relative to the arm group
+    rightArm.position.set(0, -0.3, 0);
     rightArm.castShadow = true;
-    characterGroup.add(rightArm);
+    rightArmGroup.add(rightArm);
 
     // Hands - make them claw-like
     const handGeometry = new THREE.BoxGeometry(0.2, 0.15, 0.15);
@@ -128,17 +141,17 @@ export class Zombie {
 
     // Left hand
     const leftHand = new THREE.Mesh(handGeometry, handMaterial);
-    leftHand.position.set(-0.5, 0.5, 0);
-    leftHand.rotation.z = 0.5; // Claw-like angle
+    leftHand.position.set(0, -0.6, 0);
+    leftHand.rotation.x = 0.3; // Claw-like angle
     leftHand.castShadow = true;
-    characterGroup.add(leftHand);
+    leftArmGroup.add(leftHand);
 
     // Right hand
     const rightHand = new THREE.Mesh(handGeometry, handMaterial);
-    rightHand.position.set(0.5, 0.5, 0);
-    rightHand.rotation.z = -0.5; // Claw-like angle
+    rightHand.position.set(0, -0.6, 0);
+    rightHand.rotation.x = 0.3; // Claw-like angle
     rightHand.castShadow = true;
-    characterGroup.add(rightHand);
+    rightArmGroup.add(rightHand);
 
     // Legs - use boxes for a more PZ-like character
     const legGeometry = new THREE.BoxGeometry(0.25, 0.7, 0.25);
