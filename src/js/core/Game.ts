@@ -14,12 +14,12 @@ export class Game {
   private renderer: THREE.WebGLRenderer;
   private clock: THREE.Clock;
 
-  private world: World;
-  private player: Player;
-  private inputManager: InputManager;
-  private uiManager: UIManager;
-  private zombieManager: ZombieManager;
-  private itemManager: ItemManager;
+  private world!: World;
+  private player!: Player;
+  private inputManager!: InputManager;
+  private uiManager!: UIManager;
+  private zombieManager!: ZombieManager;
+  private itemManager!: ItemManager;
 
   private isGameOver: boolean = false;
   private isLoading: boolean = true;
@@ -33,14 +33,14 @@ export class Game {
 
     // Create the camera with isometric perspective
     this.camera = new THREE.PerspectiveCamera(
-      45, // Narrower FOV for more isometric feel
+      60, // Wider FOV to see more of the world
       window.innerWidth / window.innerHeight,
       0.1,
-      1000
+      2000 // Increased far plane to see more distant objects
     );
 
-    // Set up isometric camera position (high up and at an angle)
-    this.camera.position.set(20, 20, 20);
+    // Set up isometric camera position (higher up to see more of the world)
+    this.camera.position.set(40, 40, 40);
     this.camera.lookAt(0, 0, 0);
 
     // Create the renderer

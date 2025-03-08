@@ -385,96 +385,30 @@ export class World {
     width: number,
     depth: number
   ): void {
-    const forestGeometry = new THREE.PlaneGeometry(
-      width,
-      depth,
-      width / this.gridSize,
-      depth / this.gridSize
-    );
+    // Create a simple plane geometry for the forest floor
+    const forestGeometry = new THREE.PlaneGeometry(width, depth);
 
-    // Apply more pronounced noise to forest terrain
-    const forestVertices = forestGeometry.attributes.position.array;
-    for (let i = 0; i < forestVertices.length; i += 3) {
-      const vx = forestVertices[i];
-      const vz = forestVertices[i + 2];
-
-      // Calculate world position
-      const worldX = vx + x;
-      const worldZ = vz + z;
-
-      // More pronounced noise for uneven terrain
-      const elevation = this.noise.noise(worldX * 0.02, worldZ * 0.02) * 0.5;
-      forestVertices[i + 1] = elevation;
-    }
-
-    forestGeometry.computeVertexNormals();
-    forestGeometry.attributes.position.needsUpdate = true;
-
-    // Create a canvas texture for the forest grass (similar to neighborhood grass but darker)
-    const canvas = document.createElement("canvas");
-    canvas.width = 512; // Higher resolution for forest
-    canvas.height = 512;
-    const context = canvas.getContext("2d");
-
-    if (context) {
-      // Fill with base grass color (brighter to ensure visibility)
-      context.fillStyle = "#66bb6a"; // Brighter green for better visibility
-      context.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Add subtle grass texture pattern
-      context.fillStyle = "#4caf50"; // Slightly darker green for texture
-
-      // Create random grass blades and some forest floor details
-      for (let i = 0; i < 5000; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const width = 1 + Math.random() * 2;
-        const height = 2 + Math.random() * 6;
-
-        context.fillRect(x, y, width, height);
-      }
-
-      // Add some random darker patches to simulate forest floor variation
-      context.fillStyle = "#43a047"; // Not too dark to ensure visibility
-      for (let i = 0; i < 100; i++) {
-        const patchSize = 10 + Math.random() * 30;
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        context.beginPath();
-        context.arc(x, y, patchSize, 0, Math.PI * 2);
-        context.fill();
-      }
-    }
-
-    const forestTexture = new THREE.CanvasTexture(canvas);
-    forestTexture.wrapS = THREE.RepeatWrapping;
-    forestTexture.wrapT = THREE.RepeatWrapping;
-
-    // Scale texture based on forest section size
-    const textureRepeat = Math.max(width, depth) / 20;
-    forestTexture.repeat.set(textureRepeat, textureRepeat);
-
-    // Create forest material with the texture
-    const forestMaterial = new THREE.MeshStandardMaterial({
-      map: forestTexture,
-      color: 0x7cb342, // Even brighter green color for better visibility
-      roughness: 0.7, // Less roughness for better light reflection
-      metalness: 0.0, // No metalness for natural look
-      flatShading: false, // Disable flat shading for smoother appearance
-      emissive: 0x2e7d32, // Add slight emissive property to ensure visibility
-      emissiveIntensity: 0.2, // Low intensity to not make it look like it's glowing
+    // Create a simple, unmissable bright green material
+    const forestMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ff00, // Bright green that can't be missed
+      side: THREE.DoubleSide, // Render both sides
     });
 
     const forestTerrain = new THREE.Mesh(forestGeometry, forestMaterial);
-    forestTerrain.rotation.x = -Math.PI / 2;
-    forestTerrain.receiveShadow = true;
+    forestTerrain.rotation.x = -Math.PI / 2; // Rotate to be horizontal
 
-    // Ensure the forest terrain is slightly above the void (0.01 units)
-    // This helps prevent z-fighting with any potential underlying plane
-    forestTerrain.position.set(x, -0.01, z);
+    // Position the forest floor slightly higher to ensure it's visible
+    forestTerrain.position.set(x, 0.1, z);
 
     // Add to scene
     this.scene.add(forestTerrain);
+
+    // Add a debug box to mark the center of each forest section
+    const markerGeometry = new THREE.BoxGeometry(5, 5, 5);
+    const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.set(x, 2.5, z);
+    this.scene.add(marker);
   }
 
   private generateRoads(): void {
