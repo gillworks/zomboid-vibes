@@ -21,6 +21,18 @@ export class Player {
   private maxInventorySlots: number = 16;
   private equippedItem: any = null;
 
+  // Add references to limbs for animation
+  private leftLeg!: THREE.Group;
+  private rightLeg!: THREE.Group;
+  private leftArm!: THREE.Group;
+  private rightArm!: THREE.Group;
+  private leftFoot!: THREE.Mesh;
+  private rightFoot!: THREE.Mesh;
+
+  // Animation properties
+  private animationTime: number = 0;
+  private walkingSpeed: number = 5; // Animation speed multiplier
+
   constructor(
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
@@ -110,16 +122,27 @@ export class Player {
       metalness: 0.2,
     });
 
+    // Create arm groups to allow for better positioning and parenting
+    const leftArmGroup = new THREE.Group();
+    leftArmGroup.position.set(-0.4, 0.9, 0);
+    characterGroup.add(leftArmGroup);
+
     const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    leftArm.position.set(-0.4, 0.9, 0);
+    leftArm.position.set(0, 0, 0); // Position relative to arm group
     leftArm.castShadow = true;
-    characterGroup.add(leftArm);
+    leftArmGroup.add(leftArm);
+    this.leftArm = leftArmGroup; // Store reference to the group instead
 
     // Right arm
+    const rightArmGroup = new THREE.Group();
+    rightArmGroup.position.set(0.4, 0.9, 0);
+    characterGroup.add(rightArmGroup);
+
     const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-    rightArm.position.set(0.4, 0.9, 0);
+    rightArm.position.set(0, 0, 0); // Position relative to arm group
     rightArm.castShadow = true;
-    characterGroup.add(rightArm);
+    rightArmGroup.add(rightArm);
+    this.rightArm = rightArmGroup; // Store reference to the group instead
 
     // Hands
     const handGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
@@ -129,17 +152,17 @@ export class Player {
       metalness: 0.1,
     });
 
-    // Left hand
+    // Left hand - attach to left arm group
     const leftHand = new THREE.Mesh(handGeometry, handMaterial);
-    leftHand.position.set(-0.4, 0.55, 0);
+    leftHand.position.set(0, -0.35, 0); // Position at the end of the arm
     leftHand.castShadow = true;
-    characterGroup.add(leftHand);
+    leftArmGroup.add(leftHand); // Add to arm group instead of character group
 
-    // Right hand
+    // Right hand - attach to right arm group
     const rightHand = new THREE.Mesh(handGeometry, handMaterial);
-    rightHand.position.set(0.4, 0.55, 0);
+    rightHand.position.set(0, -0.35, 0); // Position at the end of the arm
     rightHand.castShadow = true;
-    characterGroup.add(rightHand);
+    rightArmGroup.add(rightHand); // Add to arm group instead of character group
 
     // Legs - use boxes for a more PZ-like character
     const legGeometry = new THREE.BoxGeometry(0.25, 0.7, 0.25);
@@ -149,17 +172,28 @@ export class Player {
       metalness: 0.2,
     });
 
+    // Create leg groups to allow for better positioning and parenting
     // Left leg
-    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-0.2, 0.35, 0);
-    leftLeg.castShadow = true;
-    characterGroup.add(leftLeg);
+    const leftLegGroup = new THREE.Group();
+    leftLegGroup.position.set(-0.2, 0.35, 0);
+    characterGroup.add(leftLegGroup);
+
+    const leftLegMesh = new THREE.Mesh(legGeometry, legMaterial);
+    leftLegMesh.position.set(0, 0, 0); // Position relative to leg group
+    leftLegMesh.castShadow = true;
+    leftLegGroup.add(leftLegMesh);
+    this.leftLeg = leftLegGroup; // Store reference to the group instead
 
     // Right leg
-    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-    rightLeg.position.set(0.2, 0.35, 0);
-    rightLeg.castShadow = true;
-    characterGroup.add(rightLeg);
+    const rightLegGroup = new THREE.Group();
+    rightLegGroup.position.set(0.2, 0.35, 0);
+    characterGroup.add(rightLegGroup);
+
+    const rightLegMesh = new THREE.Mesh(legGeometry, legMaterial);
+    rightLegMesh.position.set(0, 0, 0); // Position relative to leg group
+    rightLegMesh.castShadow = true;
+    rightLegGroup.add(rightLegMesh);
+    this.rightLeg = rightLegGroup; // Store reference to the group instead
 
     // Feet
     const footGeometry = new THREE.BoxGeometry(0.25, 0.1, 0.35);
@@ -169,17 +203,19 @@ export class Player {
       metalness: 0.3,
     });
 
-    // Left foot
+    // Left foot - attach to left leg group
     const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
-    leftFoot.position.set(-0.2, 0.05, 0.05);
+    leftFoot.position.set(0, -0.4, 0.05); // Position at the end of the leg
     leftFoot.castShadow = true;
-    characterGroup.add(leftFoot);
+    leftLegGroup.add(leftFoot); // Add to leg group instead of character group
+    this.leftFoot = leftFoot;
 
-    // Right foot
+    // Right foot - attach to right leg group
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
-    rightFoot.position.set(0.2, 0.05, 0.05);
+    rightFoot.position.set(0, -0.4, 0.05); // Position at the end of the leg
     rightFoot.castShadow = true;
-    characterGroup.add(rightFoot);
+    rightLegGroup.add(rightFoot); // Add to leg group instead of character group
+    this.rightFoot = rightFoot;
 
     // Add a backpack (common in PZ)
     const backpackGeometry = new THREE.BoxGeometry(0.4, 0.5, 0.2);
@@ -217,6 +253,12 @@ export class Player {
 
       // Rotate the player model to face the direction of movement
       this.rotateToFaceMovement();
+
+      // Animate walking
+      this.animateWalking(delta);
+    } else {
+      // Reset limbs to default positions when not moving
+      this.resetLimbPositions();
     }
 
     // Decrease hunger over time
@@ -390,6 +432,10 @@ export class Player {
     // Reset position
     this.playerGroup.position.set(0, 0, 0);
     this.playerGroup.rotation.set(0, 0, 0);
+
+    // Reset animation
+    this.animationTime = 0;
+    this.resetLimbPositions();
   }
 
   // Add these new methods for diagonal movement
@@ -399,5 +445,40 @@ export class Player {
 
   public startMoving(): void {
     this.isMoving = true;
+  }
+
+  private animateWalking(delta: number): void {
+    // Increment animation time based on movement speed
+    this.animationTime += delta * this.walkingSpeed;
+
+    // Calculate swing amounts using sine waves
+    const legSwing = Math.sin(this.animationTime * 5) * 0.3;
+    const armSwing = Math.sin(this.animationTime * 5) * 0.2;
+
+    // Animate legs in opposite phases
+    if (this.leftLeg && this.rightLeg) {
+      this.leftLeg.rotation.x = legSwing;
+      this.rightLeg.rotation.x = -legSwing;
+
+      // No need to manually move feet as they're now parented to legs
+      // and will move automatically with their parent
+    }
+
+    // Animate arms in opposite phases to legs
+    if (this.leftArm && this.rightArm) {
+      this.leftArm.rotation.x = -armSwing;
+      this.rightArm.rotation.x = armSwing;
+    }
+  }
+
+  private resetLimbPositions(): void {
+    // Reset all limbs to their default positions/rotations
+    if (this.leftLeg) this.leftLeg.rotation.x = 0;
+    if (this.rightLeg) this.rightLeg.rotation.x = 0;
+    if (this.leftArm) this.leftArm.rotation.x = 0;
+    if (this.rightArm) this.rightArm.rotation.x = 0;
+
+    // No need to reset feet positions as they're now parented to legs
+    // and will move automatically with their parent
   }
 }
