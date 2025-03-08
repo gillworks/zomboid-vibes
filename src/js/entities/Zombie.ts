@@ -305,6 +305,12 @@ export class Zombie {
   }
 
   public takeDamage(amount: number): void {
+    // Don't take damage if already dead
+    if (this.isDead_) {
+      console.log("Zombie is already dead, can't take more damage");
+      return;
+    }
+
     console.log("Zombie taking damage:", amount);
     console.log("Current health:", this.health);
 
@@ -316,6 +322,7 @@ export class Zombie {
       this.health = 0;
       console.log("Zombie died!");
       this.die();
+      return;
     }
 
     // Visual feedback for taking damage
