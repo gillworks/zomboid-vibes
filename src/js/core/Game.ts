@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "stats.js";
 import * as TWEEN from "@tweenjs/tween.js";
 
@@ -14,7 +13,6 @@ export class Game {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private controls: OrbitControls;
   private stats: Stats;
   private clock: THREE.Clock;
 
@@ -35,14 +33,17 @@ export class Game {
     this.scene.background = new THREE.Color(0x111111);
     this.scene.fog = new THREE.FogExp2(0x111111, 0.05);
 
-    // Create the camera
+    // Create the camera with isometric perspective
     this.camera = new THREE.PerspectiveCamera(
-      75,
+      45, // Narrower FOV for more isometric feel
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    this.camera.position.set(0, 10, 10);
+
+    // Set up isometric camera position (high up and at an angle)
+    this.camera.position.set(20, 20, 20);
+    this.camera.lookAt(0, 0, 0);
 
     // Create the renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -53,13 +54,6 @@ export class Game {
     document
       .getElementById("game-container")
       ?.appendChild(this.renderer.domElement);
-
-    // Create the controls
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.screenSpacePanning = false;
-    this.controls.maxPolarAngle = Math.PI / 2;
 
     // Create the stats
     this.stats = new Stats();
@@ -196,9 +190,6 @@ export class Game {
     this.stats.begin();
 
     const delta = this.clock.getDelta();
-
-    // Update controls
-    this.controls.update();
 
     // Update TWEEN
     TWEEN.update();

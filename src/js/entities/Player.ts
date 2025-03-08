@@ -21,9 +21,6 @@ export class Player {
   private maxInventorySlots: number = 16;
   private equippedItem: any = null;
 
-  private cameraOffset: THREE.Vector3 = new THREE.Vector3(0, 5, 10);
-  private cameraLookAt: THREE.Vector3 = new THREE.Vector3();
-
   constructor(
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
@@ -45,9 +42,6 @@ export class Player {
 
     // Set initial position
     this.playerGroup.position.set(0, 0, 0);
-
-    // Update camera position
-    this.updateCameraPosition();
   }
 
   private createPlayerModel(): void {
@@ -127,7 +121,7 @@ export class Player {
         this.moveDirection.clone().multiplyScalar(moveAmount)
       );
 
-      // Update camera position
+      // Update camera to follow player but maintain isometric angle
       this.updateCameraPosition();
     }
 
@@ -178,28 +172,17 @@ export class Player {
 
   public rotateLeft(delta: number): void {
     this.playerGroup.rotation.y += this.rotationSpeed * delta;
-    this.updateCameraPosition();
   }
 
   public rotateRight(delta: number): void {
     this.playerGroup.rotation.y -= this.rotationSpeed * delta;
-    this.updateCameraPosition();
   }
 
   private updateCameraPosition(): void {
-    // Calculate camera position based on player position and rotation
-    const cameraPosition = this.cameraOffset
-      .clone()
-      .applyQuaternion(this.playerGroup.quaternion);
-    cameraPosition.add(this.playerGroup.position);
-
-    // Set camera position
-    this.camera.position.copy(cameraPosition);
-
-    // Make camera look at player
-    this.cameraLookAt.copy(this.playerGroup.position);
-    this.cameraLookAt.y += 1.5; // Look at player's head level
-    this.camera.lookAt(this.cameraLookAt);
+    // Update camera to follow player but maintain isometric angle
+    const offset = new THREE.Vector3(20, 20, 20);
+    this.camera.position.copy(this.playerGroup.position).add(offset);
+    this.camera.lookAt(this.playerGroup.position);
   }
 
   public takeDamage(amount: number): void {
@@ -304,8 +287,5 @@ export class Player {
     // Reset position
     this.playerGroup.position.set(0, 0, 0);
     this.playerGroup.rotation.set(0, 0, 0);
-
-    // Update camera
-    this.updateCameraPosition();
   }
 }

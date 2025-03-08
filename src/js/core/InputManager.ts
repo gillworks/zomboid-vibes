@@ -3,16 +3,68 @@ import { Player } from "../entities/Player";
 export class InputManager {
   private player: Player;
   private keys: { [key: string]: boolean } = {};
+  private isRightMouseDown: boolean = false;
+  private lastMouseX: number = 0;
 
   constructor(player: Player) {
     this.player = player;
 
-    // Set up event listeners
+    // Set up keyboard event listeners
     window.addEventListener("keydown", this.onKeyDown.bind(this));
     window.addEventListener("keyup", this.onKeyUp.bind(this));
 
+    // Set up mouse event listeners for right-click rotation
+    window.addEventListener("mousedown", this.onMouseDown.bind(this));
+    window.addEventListener("mouseup", this.onMouseUp.bind(this));
+    window.addEventListener("mousemove", this.onMouseMove.bind(this));
+
+    // Prevent context menu on right-click
+    window.addEventListener("contextmenu", (e) => e.preventDefault());
+
     // Set up UI event listeners
     this.setupUIListeners();
+  }
+
+  private onMouseDown(event: MouseEvent): void {
+    // Check if it's the right mouse button (button 2)
+    if (event.button === 2) {
+      this.isRightMouseDown = true;
+      this.lastMouseX = event.clientX;
+
+      // Change cursor to indicate rotation mode
+      const gameContainer = document.getElementById("game-container");
+      if (gameContainer) {
+        gameContainer.classList.add("rotating");
+      }
+    }
+  }
+
+  private onMouseUp(event: MouseEvent): void {
+    // Check if it's the right mouse button (button 2)
+    if (event.button === 2) {
+      this.isRightMouseDown = false;
+
+      // Reset cursor
+      const gameContainer = document.getElementById("game-container");
+      if (gameContainer) {
+        gameContainer.classList.remove("rotating");
+      }
+    }
+  }
+
+  private onMouseMove(event: MouseEvent): void {
+    if (this.isRightMouseDown) {
+      const deltaX = event.clientX - this.lastMouseX;
+      this.lastMouseX = event.clientX;
+
+      // Rotate player based on mouse movement
+      // Negative deltaX means rotate left, positive means rotate right
+      if (deltaX < 0) {
+        this.player.rotateLeft(-deltaX * 0.01); // Scale down the rotation speed
+      } else if (deltaX > 0) {
+        this.player.rotateRight(deltaX * 0.01); // Scale down the rotation speed
+      }
+    }
   }
 
   private onKeyDown(event: KeyboardEvent): void {
