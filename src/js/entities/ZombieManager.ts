@@ -62,6 +62,10 @@ export class ZombieManager {
 
     // Create the zombie
     const zombie = new Zombie(this.scene, this.player, this.loadingManager);
+
+    // Set the world reference for collision detection
+    zombie.setWorld(this.world);
+
     zombie.setPosition(clampedX, 0, clampedZ);
 
     // Add to the list

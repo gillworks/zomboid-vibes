@@ -100,6 +100,9 @@ export class Game {
     // Create the player
     this.player = new Player(this.scene, this.camera, this.loadingManager);
 
+    // Set the world reference for collision detection
+    this.player.setWorld(this.world);
+
     // Create the input manager
     this.inputManager = new InputManager(this.player);
 

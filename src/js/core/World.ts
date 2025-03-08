@@ -15,6 +15,10 @@ export class World {
   private trees: THREE.Group;
   private obstacles: THREE.Group;
 
+  // Collision-related properties
+  private colliders: THREE.Object3D[] = [];
+  private collisionRadius: { [id: string]: number } = {};
+
   private noise: SimplexNoise;
 
   constructor(scene: THREE.Scene, loadingManager: THREE.LoadingManager) {
@@ -57,10 +61,101 @@ export class World {
 
     this.generateObstacles();
     this.scene.add(this.obstacles);
+
+    // Initialize colliders after all objects are created
+    this.initializeColliders();
   }
 
   public update(delta: number): void {
     // Update world elements if needed
+  }
+
+  // Initialize colliders for all objects that should have collision
+  private initializeColliders(): void {
+    // Add buildings to colliders
+    this.buildings.children.forEach((building) => {
+      this.colliders.push(building);
+      // Buildings are box-shaped, so use half the width as collision radius
+      // Using a slightly smaller radius than actual size for better gameplay
+      this.collisionRadius[building.id] = 2.3; // Buildings are 5x5, so radius is ~2.5
+    });
+
+    // Add trees to colliders
+    this.trees.children.forEach((tree) => {
+      this.colliders.push(tree);
+      // Trees have a trunk and top, use a radius that covers the trunk
+      this.collisionRadius[tree.id] = 0.5; // Tree trunks are about 0.4 wide
+    });
+
+    // Add obstacles to colliders
+    this.obstacles.children.forEach((obstacle) => {
+      this.colliders.push(obstacle);
+      // Obstacles (rocks) have varying sizes, use a radius based on their scale
+      const scale = obstacle.scale.x;
+      this.collisionRadius[obstacle.id] = 0.5 * scale; // Base radius * scale
+    });
+
+    console.log(`Initialized ${this.colliders.length} colliders`);
+  }
+
+  // Check if a position collides with any object
+  public checkCollision(
+    position: THREE.Vector3,
+    radius: number = 0.5
+  ): boolean {
+    for (const collider of this.colliders) {
+      const colliderPos = collider.position.clone();
+      const distance = position.distanceTo(colliderPos);
+      const collisionDistance = radius + this.collisionRadius[collider.id];
+
+      if (distance < collisionDistance) {
+        return true; // Collision detected
+      }
+    }
+
+    return false; // No collision
+  }
+
+  // Get a valid position after collision resolution
+  public resolveCollision(
+    currentPosition: THREE.Vector3,
+    intendedPosition: THREE.Vector3,
+    radius: number = 0.5
+  ): THREE.Vector3 {
+    // If no collision at intended position, return it
+    if (!this.checkCollision(intendedPosition, radius)) {
+      return intendedPosition;
+    }
+
+    // Otherwise, find the direction of movement
+    const moveDirection = new THREE.Vector3()
+      .subVectors(intendedPosition, currentPosition)
+      .normalize();
+
+    // Try different distances along that direction until we find a valid position
+    const maxDistance = currentPosition.distanceTo(intendedPosition);
+    let validPosition = currentPosition.clone();
+
+    // Binary search for the maximum valid distance
+    let minDist = 0;
+    let maxDist = maxDistance;
+    const precision = 0.1; // Precision of the search
+
+    while (maxDist - minDist > precision) {
+      const midDist = (minDist + maxDist) / 2;
+      const testPosition = currentPosition
+        .clone()
+        .add(moveDirection.clone().multiplyScalar(midDist));
+
+      if (this.checkCollision(testPosition, radius)) {
+        maxDist = midDist;
+      } else {
+        minDist = midDist;
+        validPosition = testPosition;
+      }
+    }
+
+    return validPosition;
   }
 
   private generateTerrain(): void {
@@ -241,5 +336,9 @@ export class World {
 
   public getTrees(): THREE.Group {
     return this.trees;
+  }
+
+  public getColliders(): THREE.Object3D[] {
+    return this.colliders;
   }
 }

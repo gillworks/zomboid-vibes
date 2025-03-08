@@ -1,10 +1,12 @@
 import * as THREE from "three";
 import { Player } from "./Player";
+import { World } from "../core/World";
 
 export class Zombie {
   private scene: THREE.Scene;
   private player: Player;
   private loadingManager: THREE.LoadingManager;
+  private world: World | null = null; // Reference to the world for collision detection
 
   private zombieGroup: THREE.Group;
   private zombieBody!: THREE.Mesh;
@@ -27,6 +29,9 @@ export class Zombie {
 
   private isDead_: boolean = false;
 
+  // Collision properties
+  private collisionRadius: number = 0.5;
+
   constructor(
     scene: THREE.Scene,
     player: Player,
@@ -40,6 +45,11 @@ export class Zombie {
     this.createZombieModel();
 
     this.scene.add(this.zombieGroup);
+  }
+
+  // Set the world reference for collision detection
+  public setWorld(world: World): void {
+    this.world = world;
   }
 
   private createZombieModel(): void {
@@ -260,10 +270,25 @@ export class Zombie {
     if (distance <= this.attackRange) {
       this.attackPlayer();
       this.resetLimbPositions();
-    } else {
-      // Move towards player
+    } else if (this.world) {
+      // Move towards player with collision detection
       const moveAmount = this.moveSpeed * delta;
-      this.zombieGroup.position.add(direction.multiplyScalar(moveAmount));
+
+      // Calculate the intended new position
+      const currentPosition = this.zombieGroup.position.clone();
+      const intendedPosition = currentPosition
+        .clone()
+        .add(direction.clone().multiplyScalar(moveAmount));
+
+      // Check for collisions and resolve them
+      const newPosition = this.world.resolveCollision(
+        currentPosition,
+        intendedPosition,
+        this.collisionRadius
+      );
+
+      // Update position
+      this.zombieGroup.position.copy(newPosition);
 
       // Animate walking
       this.animateWalking(delta);

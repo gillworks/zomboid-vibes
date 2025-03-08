@@ -1,11 +1,13 @@
 import * as THREE from "three";
 import * as TWEEN from "@tweenjs/tween.js";
 import { Zombie } from "./Zombie";
+import { World } from "../core/World";
 
 export class Player {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private loadingManager: THREE.LoadingManager;
+  private world: World | null = null; // Reference to the world for collision detection
 
   private playerGroup: THREE.Group;
   private playerBody!: THREE.Mesh;
@@ -45,6 +47,9 @@ export class Player {
   // Track cause of death
   private causeOfDeath: string = "";
 
+  // Collision properties
+  private collisionRadius: number = 0.5;
+
   constructor(
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
@@ -66,6 +71,11 @@ export class Player {
 
     // Set initial position
     this.playerGroup.position.set(0, 0, 0);
+  }
+
+  // Set the world reference for collision detection
+  public setWorld(world: World): void {
+    this.world = world;
   }
 
   private createPlayerModel(): void {
@@ -254,11 +264,24 @@ export class Player {
 
   public update(delta: number): void {
     // Update player movement
-    if (this.isMoving) {
+    if (this.isMoving && this.world) {
       const moveAmount = this.moveSpeed * delta;
-      this.playerGroup.position.add(
-        this.moveDirection.clone().multiplyScalar(moveAmount)
+
+      // Calculate the intended new position
+      const currentPosition = this.playerGroup.position.clone();
+      const intendedPosition = currentPosition
+        .clone()
+        .add(this.moveDirection.clone().multiplyScalar(moveAmount));
+
+      // Check for collisions and resolve them
+      const newPosition = this.world.resolveCollision(
+        currentPosition,
+        intendedPosition,
+        this.collisionRadius
       );
+
+      // Update position
+      this.playerGroup.position.copy(newPosition);
 
       // Update camera to follow player but maintain isometric angle
       this.updateCameraPosition();
