@@ -21,6 +21,7 @@ export class World {
   private obstacles: THREE.Group;
   private roads: THREE.Group;
   private sidewalks: THREE.Group;
+  private grassLots: THREE.Group; // Group for grass lots
 
   // Neighborhood configuration
   private blockSize: number = 30; // Size of a city block
@@ -39,31 +40,34 @@ export class World {
   constructor(scene: THREE.Scene, loadingManager: THREE.LoadingManager) {
     this.scene = scene;
     this.loadingManager = loadingManager;
-    this.noise = new SimplexNoise();
 
+    // Initialize the terrain
     this.terrainGeometry = new THREE.PlaneGeometry(
       this.worldSize,
       this.worldSize,
       this.worldSize / this.gridSize,
       this.worldSize / this.gridSize
     );
-
     this.terrainMaterial = new THREE.MeshStandardMaterial({
       color: 0x3c3c3c,
       roughness: 0.8,
       metalness: 0.2,
       flatShading: true,
     });
-
     this.terrain = new THREE.Mesh(this.terrainGeometry, this.terrainMaterial);
     this.terrain.rotation.x = -Math.PI / 2;
     this.terrain.receiveShadow = true;
 
+    // Initialize groups
     this.buildings = new THREE.Group();
     this.trees = new THREE.Group();
     this.obstacles = new THREE.Group();
     this.roads = new THREE.Group();
     this.sidewalks = new THREE.Group();
+    this.grassLots = new THREE.Group(); // Initialize grass lots group
+
+    // Initialize noise generator
+    this.noise = new SimplexNoise();
   }
 
   public init(): void {
@@ -78,6 +82,7 @@ export class World {
 
     this.generateBuildings();
     this.scene.add(this.buildings);
+    this.scene.add(this.grassLots); // Add grass lots group to scene
 
     this.generateTrees();
     this.scene.add(this.trees);
@@ -85,7 +90,6 @@ export class World {
     this.generateObstacles();
     this.scene.add(this.obstacles);
 
-    // Initialize colliders after all objects are created
     this.initializeColliders();
   }
 
@@ -641,6 +645,14 @@ export class World {
         const usableHeight =
           this.blockSize - (this.roadWidth + this.sidewalkWidth * 2);
 
+        // Create grass for the entire block
+        this.createGrassBlock(
+          blockCenterX,
+          blockCenterZ,
+          usableWidth,
+          usableHeight
+        );
+
         // Calculate how many plots can fit in this block
         const plotsPerRow = Math.floor(usableWidth / this.plotSize);
         const plotsPerColumn = Math.floor(usableHeight / this.plotSize);
@@ -679,6 +691,76 @@ export class World {
         }
       }
     }
+  }
+
+  /**
+   * Creates a grass block covering the entire usable area of a city block
+   */
+  private createGrassBlock(
+    blockCenterX: number,
+    blockCenterZ: number,
+    width: number,
+    height: number
+  ): void {
+    // Create a canvas texture for the grass
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext("2d");
+
+    if (context) {
+      // Fill with base grass color
+      context.fillStyle = "#66bb6a";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Add subtle grass texture pattern
+      context.fillStyle = "#5CAD60";
+
+      // Create random grass blades
+      for (let i = 0; i < 2000; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const width = 1 + Math.random() * 2;
+        const height = 3 + Math.random() * 5;
+
+        context.fillRect(x, y, width, height);
+      }
+    }
+
+    const grassTexture = new THREE.CanvasTexture(canvas);
+    grassTexture.wrapS = THREE.RepeatWrapping;
+    grassTexture.wrapT = THREE.RepeatWrapping;
+
+    // Scale texture based on block size
+    const textureRepeat = Math.max(width, height) / 10;
+    grassTexture.repeat.set(textureRepeat, textureRepeat);
+
+    // Create grass material with the texture
+    const grassMaterial = new THREE.MeshStandardMaterial({
+      map: grassTexture,
+      color: 0x66bb6a, // Base green color
+      roughness: 0.9,
+      metalness: 0.0,
+    });
+
+    // Create a slightly elevated grass plane for the entire block
+    const grassGeometry = new THREE.PlaneGeometry(width, height);
+    const grassBlock = new THREE.Mesh(grassGeometry, grassMaterial);
+
+    // Position the grass slightly above the terrain to avoid z-fighting
+    grassBlock.position.set(blockCenterX, 0.01, blockCenterZ);
+    grassBlock.rotation.x = -Math.PI / 2;
+    grassBlock.receiveShadow = true;
+
+    // Add some random variation to the grass color
+    const hueVariation = Math.random() * 0.05 - 0.025; // ±2.5% hue variation
+    const color = new THREE.Color(grassMaterial.color.getHex());
+    color.offsetHSL(hueVariation, 0, 0);
+    grassBlock.material = grassMaterial.clone();
+    grassBlock.material.color = color;
+
+    // Add the grass block to the dedicated group
+    this.grassLots.add(grassBlock);
   }
 
   private createHouse(
