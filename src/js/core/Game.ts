@@ -160,12 +160,12 @@ export class Game {
   }
 
   private setupLights(): void {
-    // Ambient light
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    // Ambient light - increase intensity to better illuminate the forest
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.7);
     this.scene.add(ambientLight);
 
     // Directional light (sun)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
     directionalLight.position.set(100, 100, 50);
     directionalLight.castShadow = true;
 
@@ -181,8 +181,8 @@ export class Game {
 
     this.scene.add(directionalLight);
 
-    // Add a hemisphere light
-    const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
+    // Add a hemisphere light with stronger ground color for the forest
+    const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x4caf50, 0.6);
     this.scene.add(hemisphereLight);
   }
 

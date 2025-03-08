@@ -312,7 +312,7 @@ export class World {
       color: 0x4caf50, // Green for grass
       roughness: 0.8,
       metalness: 0.1,
-      flatShading: true,
+      flatShading: false, // Smooth shading for grass
     });
 
     // Create two separate terrain meshes
@@ -396,8 +396,8 @@ export class World {
     const forestGeometry = new THREE.PlaneGeometry(
       width,
       depth,
-      width / this.gridSize,
-      depth / this.gridSize
+      Math.max(10, width / this.gridSize),
+      Math.max(10, depth / this.gridSize)
     );
 
     // Apply more pronounced noise to forest terrain
@@ -422,6 +422,10 @@ export class World {
     forestTerrain.rotation.x = -Math.PI / 2;
     forestTerrain.receiveShadow = true;
     forestTerrain.position.set(x, 0, z);
+
+    // Ensure the forest terrain is visible by setting renderOrder
+    forestTerrain.renderOrder = -1;
+
     this.scene.add(forestTerrain);
   }
 
