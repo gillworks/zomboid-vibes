@@ -18,6 +18,7 @@ export class Player {
 
   private health: number = 100;
   private hunger: number = 100;
+  private thirst: number = 100;
   private inventory: any[] = [];
   private maxInventorySlots: number = 16;
   private equippedItem: any = null;
@@ -290,6 +291,14 @@ export class Player {
       // Start taking damage when starving
       this.takeDamage(0.05);
     }
+
+    // Decrease thirst over time (slightly faster than hunger)
+    this.thirst -= 0.015;
+    if (this.thirst < 0) {
+      this.thirst = 0;
+      // Start taking damage when dehydrated
+      this.takeDamage(0.07); // Dehydration is more dangerous than hunger
+    }
   }
 
   // New method to rotate the player model to face the direction of movement
@@ -436,6 +445,10 @@ export class Player {
     return this.hunger;
   }
 
+  public getThirst(): number {
+    return this.thirst;
+  }
+
   public getInventory(): any[] {
     return [...this.inventory];
   }
@@ -456,6 +469,7 @@ export class Player {
     // Reset player state
     this.health = 100;
     this.hunger = 100;
+    this.thirst = 100;
     this.inventory = Array(this.maxInventorySlots).fill(null);
     this.equippedItem = null;
     this.timeSinceLastAttack = 0;
@@ -653,5 +667,12 @@ export class Player {
 
   public canAttack(): boolean {
     return this.timeSinceLastAttack >= this.attackCooldown && !this.isAttacking;
+  }
+
+  public drink(amount: number): void {
+    this.thirst += amount;
+    if (this.thirst > 100) {
+      this.thirst = 100;
+    }
   }
 }

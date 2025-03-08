@@ -5,6 +5,7 @@ export class UIManager {
 
   private healthBar: HTMLElement | null;
   private hungerBar: HTMLElement | null;
+  private thirstBar: HTMLElement | null;
 
   constructor(player: Player) {
     this.player = player;
@@ -12,11 +13,13 @@ export class UIManager {
     // Get UI elements
     this.healthBar = document.getElementById("health-bar");
     this.hungerBar = document.getElementById("hunger-bar");
+    this.thirstBar = document.getElementById("thirst-bar");
   }
 
   public update(): void {
     this.updateHealthBar();
     this.updateHungerBar();
+    this.updateThirstBar();
   }
 
   private updateHealthBar(): void {
@@ -47,6 +50,22 @@ export class UIManager {
         this.hungerBar.style.backgroundColor = "#ff8800"; // Orange
       } else {
         this.hungerBar.style.backgroundColor = "#8b8000"; // Dark yellow
+      }
+    }
+  }
+
+  private updateThirstBar(): void {
+    if (this.thirstBar) {
+      const thirst = this.player.getThirst();
+      this.thirstBar.style.width = `${thirst}%`;
+
+      // Change color based on thirst level
+      if (thirst < 25) {
+        this.thirstBar.style.backgroundColor = "#ff0000"; // Red
+      } else if (thirst < 50) {
+        this.thirstBar.style.backgroundColor = "#1e90ff"; // Lighter blue
+      } else {
+        this.thirstBar.style.backgroundColor = "#0000cd"; // Medium blue
       }
     }
   }

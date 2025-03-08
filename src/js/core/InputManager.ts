@@ -178,7 +178,12 @@ export class InputManager {
         this.player.equipItem(index);
         break;
       case "food":
-        this.player.eat(item.value);
+        // Check if it's a water bottle
+        if (item.name === "Water Bottle") {
+          this.player.drink(item.value);
+        } else {
+          this.player.eat(item.value);
+        }
         this.player.removeFromInventory(index);
         break;
       case "medkit":

@@ -92,6 +92,10 @@ html {
   bottom: 50px;
 }
 
+.bar-container:nth-child(3) {
+  bottom: 80px;
+}
+
 .bar-label {
   width: 60px;
   font-size: 14px;
@@ -103,7 +107,8 @@ html {
 }
 
 #health-bar-container,
-#hunger-bar-container {
+#hunger-bar-container,
+#thirst-bar-container {
   width: 200px;
   height: 20px;
   background-color: rgba(0, 0, 0, 0.5);
@@ -123,6 +128,13 @@ html {
   height: 100%;
   width: 100%;
   background-color: #8b8000;
+  transition: width 0.3s ease;
+}
+
+#thirst-bar {
+  height: 100%;
+  width: 100%;
+  background-color: #0000cd; /* Medium blue for water */
   transition: width 0.3s ease;
 }
 
