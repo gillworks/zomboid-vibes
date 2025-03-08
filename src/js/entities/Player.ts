@@ -69,8 +69,12 @@ export class Player {
       this.inventory.push(null);
     }
 
-    // Set initial position
+    // Set initial position to the center of a road intersection
+    // This ensures the player starts in an open area without collisions
     this.playerGroup.position.set(0, 0, 0);
+
+    // Update camera position immediately
+    this.updateCameraPosition();
   }
 
   // Set the world reference for collision detection
@@ -264,7 +268,7 @@ export class Player {
 
   public update(delta: number): void {
     // Update player movement
-    if (this.isMoving && this.world) {
+    if (this.isMoving) {
       const moveAmount = this.moveSpeed * delta;
 
       // Calculate the intended new position
@@ -273,12 +277,15 @@ export class Player {
         .clone()
         .add(this.moveDirection.clone().multiplyScalar(moveAmount));
 
-      // Check for collisions and resolve them
-      const newPosition = this.world.resolveCollision(
-        currentPosition,
-        intendedPosition,
-        this.collisionRadius
-      );
+      // Check for collisions and resolve them if world is available
+      let newPosition = intendedPosition;
+      if (this.world) {
+        newPosition = this.world.resolveCollision(
+          currentPosition,
+          intendedPosition,
+          this.collisionRadius
+        );
+      }
 
       // Update position
       this.playerGroup.position.copy(newPosition);
@@ -299,12 +306,11 @@ export class Player {
     // Update attack cooldown
     if (this.timeSinceLastAttack < this.attackCooldown) {
       this.timeSinceLastAttack += delta;
-      console.log(
-        "Cooldown: ",
-        this.timeSinceLastAttack,
-        "/",
-        this.attackCooldown
-      );
+    }
+
+    // Update attack animation
+    if (this.isAttacking) {
+      this.animateAttack();
     }
 
     // Update TWEEN animations
@@ -457,6 +463,10 @@ export class Player {
     ) {
       this.equippedItem = this.inventory[index];
     }
+  }
+
+  public getPlayerGroup(): THREE.Group {
+    return this.playerGroup;
   }
 
   public getPosition(): THREE.Vector3 {

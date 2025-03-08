@@ -100,6 +100,11 @@ export class Game {
     // Create the player
     this.player = new Player(this.scene, this.camera, this.loadingManager);
 
+    // Position the player at a road intersection in the neighborhood
+    // The roads are positioned at multiples of blockSize (30)
+    // So we'll place the player at the first intersection (0, 0)
+    this.player.getPlayerGroup().position.set(0, 0, 0);
+
     // Set the world reference for collision detection
     this.player.setWorld(this.world);
 
@@ -151,7 +156,7 @@ export class Game {
       if (this.loadingManager.onLoad) {
         this.loadingManager.onLoad();
       }
-    }, 1500); // Give a short delay to show the loading screen
+    }, 1000);
   }
 
   private setupLights(): void {

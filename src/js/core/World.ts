@@ -1,11 +1,12 @@
 import * as THREE from "three";
-import { SimplexNoise } from "three/examples/jsm/math/SimplexNoise";
+import { SimplexNoise } from "three/addons/math/SimplexNoise.js";
 
 export class World {
   private scene: THREE.Scene;
   private loadingManager: THREE.LoadingManager;
 
-  private worldSize: number = 100;
+  // Increase world size for a larger neighborhood
+  private worldSize: number = 200;
   private gridSize: number = 1;
   private terrainGeometry: THREE.PlaneGeometry;
   private terrainMaterial: THREE.MeshStandardMaterial;
@@ -14,6 +15,16 @@ export class World {
   private buildings: THREE.Group;
   private trees: THREE.Group;
   private obstacles: THREE.Group;
+  private roads: THREE.Group;
+  private sidewalks: THREE.Group;
+
+  // Neighborhood configuration
+  private blockSize: number = 30; // Size of a city block
+  private roadWidth: number = 8; // Width of roads
+  private sidewalkWidth: number = 2; // Width of sidewalks
+  private plotSize: number = 10; // Size of a house plot
+  private houseSize: number = 8; // Size of houses
+  private housePadding: number = 1; // Space between houses and plot edge
 
   // Collision-related properties
   private colliders: THREE.Object3D[] = [];
@@ -47,11 +58,19 @@ export class World {
     this.buildings = new THREE.Group();
     this.trees = new THREE.Group();
     this.obstacles = new THREE.Group();
+    this.roads = new THREE.Group();
+    this.sidewalks = new THREE.Group();
   }
 
   public init(): void {
     this.generateTerrain();
     this.scene.add(this.terrain);
+
+    this.generateRoads();
+    this.scene.add(this.roads);
+
+    this.generateSidewalks();
+    this.scene.add(this.sidewalks);
 
     this.generateBuildings();
     this.scene.add(this.buildings);
@@ -72,31 +91,92 @@ export class World {
 
   // Initialize colliders for all objects that should have collision
   private initializeColliders(): void {
+    // Clear existing colliders
+    this.colliders = [];
+    this.collisionRadius = {};
+
     // Add buildings to colliders
     this.buildings.children.forEach((building) => {
-      this.colliders.push(building);
-      // Buildings are box-shaped with width and depth of 5
-      // For a box, the maximum distance from center to corner in XZ plane is sqrt(5²/2 + 5²/2) = 5
-      // Using a slightly smaller radius than actual size for better gameplay
-      this.collisionRadius[building.id] = 3.0; // Increased from 2.3 to 3.0
-    });
+      // For grouped objects (like houses), add each child to colliders
+      if (building instanceof THREE.Group) {
+        building.children.forEach((child) => {
+          if (child instanceof THREE.Mesh) {
+            this.colliders.push(child);
 
-    // Add trees to colliders
-    this.trees.children.forEach((tree) => {
-      this.colliders.push(tree);
-      // Trees have a trunk and top, use a radius that covers the trunk
-      this.collisionRadius[tree.id] = 0.5; // Tree trunks are about 0.4 wide
+            // Calculate collision radius based on the mesh's geometry
+            if (child.geometry instanceof THREE.BoxGeometry) {
+              const size = new THREE.Vector3();
+              child.geometry.computeBoundingBox();
+              child.geometry.boundingBox?.getSize(size);
+
+              // Use half the maximum dimension as the collision radius
+              const maxDimension = Math.max(size.x, size.z);
+              this.collisionRadius[child.id] = (maxDimension / 2) * 0.8; // 80% of actual size for better gameplay
+            } else {
+              // Default collision radius for non-box geometries
+              this.collisionRadius[child.id] = 0.5;
+            }
+          }
+        });
+      } else if (building instanceof THREE.Mesh) {
+        this.colliders.push(building);
+
+        // For houses, use a slightly smaller radius than actual size for better gameplay
+        this.collisionRadius[building.id] = (this.houseSize / 2) * 0.8;
+      }
     });
 
     // Add obstacles to colliders
     this.obstacles.children.forEach((obstacle) => {
-      this.colliders.push(obstacle);
-      // Obstacles (rocks) have varying sizes, use a radius based on their scale
-      const scale = obstacle.scale.x;
-      this.collisionRadius[obstacle.id] = 0.5 * scale; // Base radius * scale
+      if (obstacle instanceof THREE.Group) {
+        // For grouped obstacles (like mailboxes), add the group as a collider
+        this.colliders.push(obstacle);
+        this.collisionRadius[obstacle.id] = 0.3; // Small collision radius for grouped obstacles
+      } else if (obstacle instanceof THREE.Mesh) {
+        // For individual obstacles
+        this.colliders.push(obstacle);
+
+        // Set collision radius based on the obstacle's scale
+        const scale = obstacle.scale.x; // Assuming uniform scaling
+        this.collisionRadius[obstacle.id] = 0.3 * scale;
+      }
     });
 
+    // Add trees to colliders (only the trunks)
+    this.trees.children.forEach((tree) => {
+      if (tree instanceof THREE.Group) {
+        // Find the trunk in the tree group (first child)
+        const trunk = tree.children[0];
+        if (trunk) {
+          this.colliders.push(trunk);
+
+          // Set collision radius based on the tree's scale
+          const scale = tree.scale.x; // Assuming uniform scaling
+          this.collisionRadius[trunk.id] = 0.3 * scale;
+        }
+      }
+    });
+
+    // Add roads and sidewalks as non-colliders (for future use if needed)
+    // We don't add them to this.colliders because we want players to walk on them
+
     console.log(`Initialized ${this.colliders.length} colliders`);
+
+    // Verify that all colliders have a valid collision radius
+    let missingRadiusCount = 0;
+    this.colliders.forEach((collider) => {
+      if (this.collisionRadius[collider.id] === undefined) {
+        missingRadiusCount++;
+        // Set a default radius for any missing entries
+        this.collisionRadius[collider.id] = 0.5;
+      }
+    });
+
+    if (missingRadiusCount > 0) {
+      console.warn(
+        `Fixed ${missingRadiusCount} colliders with missing radius values`
+      );
+    }
   }
 
   // Check if a position collides with any object
@@ -104,12 +184,34 @@ export class World {
     position: THREE.Vector3,
     radius: number = 0.5
   ): boolean {
+    // Check if position is outside the world boundaries
+    const halfWorldSize = this.worldSize / 2;
+    if (
+      position.x < -halfWorldSize + radius ||
+      position.x > halfWorldSize - radius ||
+      position.z < -halfWorldSize + radius ||
+      position.z > halfWorldSize - radius
+    ) {
+      return true; // Collision with world boundary
+    }
+
+    // Check collisions with objects
     for (const collider of this.colliders) {
-      const colliderPos = collider.position.clone();
+      // Skip if the collider doesn't have a valid position
+      if (!collider.position || !this.collisionRadius[collider.id]) {
+        continue;
+      }
+
+      // Get the world position of the collider
+      const colliderWorldPos = new THREE.Vector3();
+      collider.getWorldPosition(colliderWorldPos);
 
       // Create 2D positions (ignoring Y-axis) for distance calculation
       const pos2D = new THREE.Vector2(position.x, position.z);
-      const colliderPos2D = new THREE.Vector2(colliderPos.x, colliderPos.z);
+      const colliderPos2D = new THREE.Vector2(
+        colliderWorldPos.x,
+        colliderWorldPos.z
+      );
 
       // Calculate distance in 2D (XZ plane only)
       const distance = pos2D.distanceTo(colliderPos2D);
@@ -193,8 +295,8 @@ export class World {
       const x = vertices[i];
       const z = vertices[i + 2];
 
-      // Apply simplex noise for natural-looking terrain
-      const elevation = this.noise.noise(x * 0.02, z * 0.02) * 0.5;
+      // Apply very subtle simplex noise for a mostly flat terrain with slight variations
+      const elevation = this.noise.noise(x * 0.01, z * 0.01) * 0.2;
 
       // Set the y-coordinate (height) of the vertex
       vertices[i + 1] = elevation;
@@ -213,41 +315,420 @@ export class World {
     this.scene.add(gridHelper);
   }
 
+  private generateRoads(): void {
+    const roadMaterial = new THREE.MeshStandardMaterial({
+      color: 0x333333, // Dark gray for asphalt
+      roughness: 0.9,
+      metalness: 0.1,
+    });
+
+    // Calculate the number of blocks that can fit in the world
+    const halfWorldSize = this.worldSize / 2;
+    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
+    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+
+    // Create horizontal roads
+    for (let i = 0; i <= numBlocksZ; i++) {
+      const z = -halfWorldSize + i * this.blockSize;
+      const roadGeometry = new THREE.BoxGeometry(
+        this.worldSize,
+        0.1,
+        this.roadWidth
+      );
+      const road = new THREE.Mesh(roadGeometry, roadMaterial);
+      road.position.set(0, 0.05, z);
+      this.roads.add(road);
+    }
+
+    // Create vertical roads
+    for (let i = 0; i <= numBlocksX; i++) {
+      const x = -halfWorldSize + i * this.blockSize;
+      const roadGeometry = new THREE.BoxGeometry(
+        this.roadWidth,
+        0.1,
+        this.worldSize
+      );
+      const road = new THREE.Mesh(roadGeometry, roadMaterial);
+      road.position.set(x, 0.05, 0);
+      this.roads.add(road);
+    }
+
+    // Add road markings (white lines)
+    const linesMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    // Horizontal road markings
+    for (let i = 0; i <= numBlocksZ; i++) {
+      const z = -halfWorldSize + i * this.blockSize;
+      const lineGeometry = new THREE.BoxGeometry(this.worldSize, 0.05, 0.3);
+      const line = new THREE.Mesh(lineGeometry, linesMaterial);
+      line.position.set(0, 0.1, z);
+      this.roads.add(line);
+    }
+
+    // Vertical road markings
+    for (let i = 0; i <= numBlocksX; i++) {
+      const x = -halfWorldSize + i * this.blockSize;
+      const lineGeometry = new THREE.BoxGeometry(0.3, 0.05, this.worldSize);
+      const line = new THREE.Mesh(lineGeometry, linesMaterial);
+      line.position.set(x, 0.1, 0);
+      this.roads.add(line);
+    }
+  }
+
+  private generateSidewalks(): void {
+    const sidewalkMaterial = new THREE.MeshStandardMaterial({
+      color: 0x999999, // Light gray for concrete
+      roughness: 0.8,
+      metalness: 0.1,
+    });
+
+    const halfWorldSize = this.worldSize / 2;
+    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
+    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+
+    // Create sidewalks along horizontal roads
+    for (let i = 0; i <= numBlocksZ; i++) {
+      const z = -halfWorldSize + i * this.blockSize;
+
+      // Sidewalk above the road
+      const sidewalkTop = new THREE.Mesh(
+        new THREE.BoxGeometry(this.worldSize, 0.15, this.sidewalkWidth),
+        sidewalkMaterial
+      );
+      sidewalkTop.position.set(
+        0,
+        0.075,
+        z - (this.roadWidth / 2 + this.sidewalkWidth / 2)
+      );
+      this.sidewalks.add(sidewalkTop);
+
+      // Sidewalk below the road
+      const sidewalkBottom = new THREE.Mesh(
+        new THREE.BoxGeometry(this.worldSize, 0.15, this.sidewalkWidth),
+        sidewalkMaterial
+      );
+      sidewalkBottom.position.set(
+        0,
+        0.075,
+        z + (this.roadWidth / 2 + this.sidewalkWidth / 2)
+      );
+      this.sidewalks.add(sidewalkBottom);
+    }
+
+    // Create sidewalks along vertical roads
+    for (let i = 0; i <= numBlocksX; i++) {
+      const x = -halfWorldSize + i * this.blockSize;
+
+      // Sidewalk to the left of the road
+      const sidewalkLeft = new THREE.Mesh(
+        new THREE.BoxGeometry(this.sidewalkWidth, 0.15, this.worldSize),
+        sidewalkMaterial
+      );
+      sidewalkLeft.position.set(
+        x - (this.roadWidth / 2 + this.sidewalkWidth / 2),
+        0.075,
+        0
+      );
+      this.sidewalks.add(sidewalkLeft);
+
+      // Sidewalk to the right of the road
+      const sidewalkRight = new THREE.Mesh(
+        new THREE.BoxGeometry(this.sidewalkWidth, 0.15, this.worldSize),
+        sidewalkMaterial
+      );
+      sidewalkRight.position.set(
+        x + (this.roadWidth / 2 + this.sidewalkWidth / 2),
+        0.075,
+        0
+      );
+      this.sidewalks.add(sidewalkRight);
+    }
+  }
+
   private generateBuildings(): void {
-    // Create a few buildings scattered around the world
-    const buildingCount = 10;
-    const buildingGeometry = new THREE.BoxGeometry(5, 10, 5);
-    const buildingMaterial = new THREE.MeshStandardMaterial({
-      color: 0x808080,
+    const halfWorldSize = this.worldSize / 2;
+    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
+    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+
+    // House materials with different colors
+    const houseMaterials = [
+      new THREE.MeshStandardMaterial({
+        color: 0xa0522d,
+        roughness: 0.7,
+        metalness: 0.2,
+      }), // Brown
+      new THREE.MeshStandardMaterial({
+        color: 0x8b4513,
+        roughness: 0.7,
+        metalness: 0.2,
+      }), // Saddle Brown
+      new THREE.MeshStandardMaterial({
+        color: 0xcd853f,
+        roughness: 0.7,
+        metalness: 0.2,
+      }), // Peru
+      new THREE.MeshStandardMaterial({
+        color: 0xdeb887,
+        roughness: 0.7,
+        metalness: 0.2,
+      }), // Burlywood
+      new THREE.MeshStandardMaterial({
+        color: 0xd2b48c,
+        roughness: 0.7,
+        metalness: 0.2,
+      }), // Tan
+    ];
+
+    // Roof material
+    const roofMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8b0000, // Dark red
       roughness: 0.7,
       metalness: 0.2,
     });
 
-    for (let i = 0; i < buildingCount; i++) {
-      const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+    // For each block in the grid
+    for (let blockX = 0; blockX < numBlocksX; blockX++) {
+      for (let blockZ = 0; blockZ < numBlocksZ; blockZ++) {
+        // Calculate the block's center position
+        const blockCenterX =
+          -halfWorldSize + blockX * this.blockSize + this.blockSize / 2;
+        const blockCenterZ =
+          -halfWorldSize + blockZ * this.blockSize + this.blockSize / 2;
 
-      // Position the building randomly in the world
-      const x = (Math.random() - 0.5) * (this.worldSize - 10);
-      const z = (Math.random() - 0.5) * (this.worldSize - 10);
+        // Calculate the usable area within the block (excluding roads and sidewalks)
+        const usableWidth =
+          this.blockSize - (this.roadWidth + this.sidewalkWidth * 2);
+        const usableHeight =
+          this.blockSize - (this.roadWidth + this.sidewalkWidth * 2);
 
-      // Get the terrain height at this position
-      const terrainHeight = this.getTerrainHeightAt(x, z);
+        // Calculate how many plots can fit in this block
+        const plotsPerRow = Math.floor(usableWidth / this.plotSize);
+        const plotsPerColumn = Math.floor(usableHeight / this.plotSize);
 
-      building.position.set(x, terrainHeight + 5, z);
-      building.castShadow = true;
-      building.receiveShadow = true;
+        // Skip if the block is too small for any plots
+        if (plotsPerRow <= 0 || plotsPerColumn <= 0) continue;
 
-      // Add some random rotation
-      building.rotation.y = Math.random() * Math.PI * 2;
+        // Calculate the starting position for the first plot
+        const startX =
+          blockCenterX - (plotsPerRow * this.plotSize) / 2 + this.plotSize / 2;
+        const startZ =
+          blockCenterZ -
+          (plotsPerColumn * this.plotSize) / 2 +
+          this.plotSize / 2;
 
-      this.buildings.add(building);
+        // Create houses on each plot
+        for (let plotX = 0; plotX < plotsPerRow; plotX++) {
+          for (let plotZ = 0; plotZ < plotsPerColumn; plotZ++) {
+            // Calculate the position for this house
+            const houseX = startX + plotX * this.plotSize;
+            const houseZ = startZ + plotZ * this.plotSize;
+
+            // Randomly decide if we should place a house here (80% chance)
+            if (Math.random() < 0.8) {
+              // Create the house
+              this.createHouse(
+                houseX,
+                houseZ,
+                houseMaterials[
+                  Math.floor(Math.random() * houseMaterials.length)
+                ],
+                roofMaterial
+              );
+            }
+          }
+        }
+      }
     }
   }
 
-  private generateTrees(): void {
-    // Create trees scattered around the world
-    const treeCount = 50;
+  private createHouse(
+    x: number,
+    z: number,
+    wallMaterial: THREE.Material,
+    roofMaterial: THREE.Material
+  ): void {
+    // Create a group for the house
+    const house = new THREE.Group();
 
+    // Randomize house height between 3 and 5
+    const houseHeight = 3 + Math.random() * 2;
+
+    // Create the main building
+    const buildingGeometry = new THREE.BoxGeometry(
+      this.houseSize - this.housePadding * 2,
+      houseHeight,
+      this.houseSize - this.housePadding * 2
+    );
+    const building = new THREE.Mesh(buildingGeometry, wallMaterial);
+    building.position.y = houseHeight / 2;
+    building.castShadow = true;
+    building.receiveShadow = true;
+    house.add(building);
+
+    // Create a pitched roof
+    const roofHeight = 1.5;
+    const roofGeometry = new THREE.ConeGeometry(
+      (this.houseSize - this.housePadding) * 0.75,
+      roofHeight,
+      4
+    );
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.y = houseHeight + roofHeight / 2;
+    roof.rotation.y = Math.PI / 4; // Rotate to align with the house
+    roof.castShadow = true;
+    house.add(roof);
+
+    // Add a door
+    const doorWidth = 1;
+    const doorHeight = 2;
+    const doorGeometry = new THREE.BoxGeometry(doorWidth, doorHeight, 0.1);
+    const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 }); // Brown door
+    const door = new THREE.Mesh(doorGeometry, doorMaterial);
+
+    // Position the door on a random side of the house
+    const side = Math.floor(Math.random() * 4);
+    const doorOffset = (this.houseSize - this.housePadding * 2) / 2;
+
+    switch (side) {
+      case 0: // Front
+        door.position.set(0, doorHeight / 2, doorOffset);
+        break;
+      case 1: // Right
+        door.position.set(doorOffset, doorHeight / 2, 0);
+        door.rotation.y = Math.PI / 2;
+        break;
+      case 2: // Back
+        door.position.set(0, doorHeight / 2, -doorOffset);
+        door.rotation.y = Math.PI;
+        break;
+      case 3: // Left
+        door.position.set(-doorOffset, doorHeight / 2, 0);
+        door.rotation.y = -Math.PI / 2;
+        break;
+    }
+
+    house.add(door);
+
+    // Add windows
+    this.addWindowsToHouse(house, houseHeight);
+
+    // Position the house
+    house.position.set(x, 0, z);
+
+    // Add a small random rotation for variety
+    house.rotation.y = Math.random() * Math.PI * 0.1;
+
+    // Add the house to the buildings group
+    this.buildings.add(house);
+
+    // Add a small yard with a fence
+    this.createYard(x, z);
+  }
+
+  private addWindowsToHouse(house: THREE.Group, houseHeight: number): void {
+    const windowSize = 0.8;
+    const windowGeometry = new THREE.BoxGeometry(windowSize, windowSize, 0.1);
+    const windowMaterial = new THREE.MeshStandardMaterial({
+      color: 0xadd8e6, // Light blue
+      transparent: true,
+      opacity: 0.7,
+    });
+
+    const houseWidth = this.houseSize - this.housePadding * 2;
+    const windowOffset = houseWidth / 2;
+
+    // Add windows to each side of the house
+    for (let side = 0; side < 4; side++) {
+      // Add 1-3 windows per side
+      const windowCount = 1 + Math.floor(Math.random() * 3);
+
+      for (let i = 0; i < windowCount; i++) {
+        const window = new THREE.Mesh(windowGeometry, windowMaterial);
+
+        // Position windows evenly along the wall
+        const xOffset = (i - (windowCount - 1) / 2) * (windowSize * 1.5);
+
+        // Position windows at a height of 2/3 of the house height
+        const yPos = houseHeight * 0.66;
+
+        switch (side) {
+          case 0: // Front
+            window.position.set(xOffset, yPos, windowOffset);
+            break;
+          case 1: // Right
+            window.position.set(windowOffset, yPos, xOffset);
+            window.rotation.y = Math.PI / 2;
+            break;
+          case 2: // Back
+            window.position.set(xOffset, yPos, -windowOffset);
+            window.rotation.y = Math.PI;
+            break;
+          case 3: // Left
+            window.position.set(-windowOffset, yPos, xOffset);
+            window.rotation.y = -Math.PI / 2;
+            break;
+        }
+
+        house.add(window);
+      }
+    }
+  }
+
+  private createYard(x: number, z: number): void {
+    // Create a simple fence around the plot
+    const fenceHeight = 0.8;
+    const fenceMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8b4513, // Brown
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+
+    const halfPlotSize = this.plotSize / 2;
+
+    // Create the four sides of the fence
+    const fenceGeometryX = new THREE.BoxGeometry(
+      this.plotSize,
+      fenceHeight,
+      0.1
+    );
+    const fenceGeometryZ = new THREE.BoxGeometry(
+      0.1,
+      fenceHeight,
+      this.plotSize
+    );
+
+    // Front fence (with gap for entrance)
+    const frontFenceLeft = new THREE.Mesh(
+      new THREE.BoxGeometry(halfPlotSize - 1, fenceHeight, 0.1),
+      fenceMaterial
+    );
+    frontFenceLeft.position.set(x - 1, fenceHeight / 2, z + halfPlotSize);
+    this.obstacles.add(frontFenceLeft);
+
+    const frontFenceRight = new THREE.Mesh(
+      new THREE.BoxGeometry(halfPlotSize - 1, fenceHeight, 0.1),
+      fenceMaterial
+    );
+    frontFenceRight.position.set(x + 1, fenceHeight / 2, z + halfPlotSize);
+    this.obstacles.add(frontFenceRight);
+
+    // Back fence
+    const backFence = new THREE.Mesh(fenceGeometryX, fenceMaterial);
+    backFence.position.set(x, fenceHeight / 2, z - halfPlotSize);
+    this.obstacles.add(backFence);
+
+    // Left fence
+    const leftFence = new THREE.Mesh(fenceGeometryZ, fenceMaterial);
+    leftFence.position.set(x - halfPlotSize, fenceHeight / 2, z);
+    this.obstacles.add(leftFence);
+
+    // Right fence
+    const rightFence = new THREE.Mesh(fenceGeometryZ, fenceMaterial);
+    rightFence.position.set(x + halfPlotSize, fenceHeight / 2, z);
+    this.obstacles.add(rightFence);
+  }
+
+  private generateTrees(): void {
     // Tree trunk
     const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.4, 2, 8);
     const trunkMaterial = new THREE.MeshStandardMaterial({
@@ -264,40 +745,210 @@ export class World {
       metalness: 0.1,
     });
 
-    for (let i = 0; i < treeCount; i++) {
-      const tree = new THREE.Group();
+    const halfWorldSize = this.worldSize / 2;
+    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
+    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
 
-      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-      trunk.castShadow = true;
-      trunk.receiveShadow = true;
-      trunk.position.y = 1;
-      tree.add(trunk);
+    // Place trees along sidewalks
+    for (let i = 0; i <= numBlocksZ; i++) {
+      for (let j = 0; j <= numBlocksX; j++) {
+        const x = -halfWorldSize + j * this.blockSize;
+        const z = -halfWorldSize + i * this.blockSize;
 
-      const top = new THREE.Mesh(topGeometry, topMaterial);
-      top.castShadow = true;
-      top.receiveShadow = true;
-      top.position.y = 3.5;
-      tree.add(top);
+        // Place trees at regular intervals along sidewalks
+        this.placeSidewalkTrees(
+          x,
+          z,
+          trunkGeometry,
+          trunkMaterial,
+          topGeometry,
+          topMaterial
+        );
+      }
+    }
 
-      // Position the tree randomly in the world
-      const x = (Math.random() - 0.5) * (this.worldSize - 5);
-      const z = (Math.random() - 0.5) * (this.worldSize - 5);
+    // Add some random trees in empty areas
+    const randomTreeCount = 30;
+    for (let i = 0; i < randomTreeCount; i++) {
+      // Create a tree
+      const tree = this.createTree(
+        trunkGeometry,
+        trunkMaterial,
+        topGeometry,
+        topMaterial
+      );
 
-      // Get the terrain height at this position
-      const terrainHeight = this.getTerrainHeightAt(x, z);
+      // Try to find a position that doesn't collide with roads or buildings
+      let validPosition = false;
+      let attempts = 0;
+      let x, z;
 
-      tree.position.set(x, terrainHeight, z);
+      while (!validPosition && attempts < 10) {
+        x = (Math.random() - 0.5) * (this.worldSize - 10);
+        z = (Math.random() - 0.5) * (this.worldSize - 10);
 
-      // Add some random rotation
-      tree.rotation.y = Math.random() * Math.PI * 2;
+        // Check if the position is near a road
+        const nearRoad = this.isNearRoad(x, z);
 
-      this.trees.add(tree);
+        // If not near a road, it's a valid position
+        if (!nearRoad) {
+          validPosition = true;
+        }
+
+        attempts++;
+      }
+
+      if (validPosition) {
+        // Get the terrain height at this position
+        const terrainHeight = this.getTerrainHeightAt(x!, z!);
+
+        // Position the tree
+        tree.position.set(x!, terrainHeight, z!);
+
+        // Add some random rotation
+        tree.rotation.y = Math.random() * Math.PI * 2;
+
+        this.trees.add(tree);
+      }
     }
   }
 
+  private placeSidewalkTrees(
+    x: number,
+    z: number,
+    trunkGeometry: THREE.CylinderGeometry,
+    trunkMaterial: THREE.MeshStandardMaterial,
+    topGeometry: THREE.ConeGeometry,
+    topMaterial: THREE.MeshStandardMaterial
+  ): void {
+    // Place trees along the sidewalks at regular intervals
+    const treeSpacing = 5; // Space between trees
+    const sidewalkOffset = this.roadWidth / 2 + this.sidewalkWidth + 0.5; // Offset from road center
+
+    // Calculate how many trees can fit along each side of the block
+    const treesPerSide = Math.floor(this.blockSize / treeSpacing);
+
+    // Skip if no trees can fit
+    if (treesPerSide <= 0) return;
+
+    // Place trees along the horizontal sidewalks
+    for (let i = 1; i < treesPerSide; i++) {
+      const treeX = x - this.blockSize / 2 + i * treeSpacing;
+
+      // Only place a tree with 70% probability for variety
+      if (Math.random() < 0.7) {
+        // Tree on the top sidewalk
+        const topTree = this.createTree(
+          trunkGeometry,
+          trunkMaterial,
+          topGeometry,
+          topMaterial
+        );
+        topTree.position.set(treeX, 0, z - sidewalkOffset);
+        this.trees.add(topTree);
+      }
+
+      if (Math.random() < 0.7) {
+        // Tree on the bottom sidewalk
+        const bottomTree = this.createTree(
+          trunkGeometry,
+          trunkMaterial,
+          topGeometry,
+          topMaterial
+        );
+        bottomTree.position.set(treeX, 0, z + sidewalkOffset);
+        this.trees.add(bottomTree);
+      }
+    }
+
+    // Place trees along the vertical sidewalks
+    for (let i = 1; i < treesPerSide; i++) {
+      const treeZ = z - this.blockSize / 2 + i * treeSpacing;
+
+      // Only place a tree with 70% probability for variety
+      if (Math.random() < 0.7) {
+        // Tree on the left sidewalk
+        const leftTree = this.createTree(
+          trunkGeometry,
+          trunkMaterial,
+          topGeometry,
+          topMaterial
+        );
+        leftTree.position.set(x - sidewalkOffset, 0, treeZ);
+        this.trees.add(leftTree);
+      }
+
+      if (Math.random() < 0.7) {
+        // Tree on the right sidewalk
+        const rightTree = this.createTree(
+          trunkGeometry,
+          trunkMaterial,
+          topGeometry,
+          topMaterial
+        );
+        rightTree.position.set(x + sidewalkOffset, 0, treeZ);
+        this.trees.add(rightTree);
+      }
+    }
+  }
+
+  private createTree(
+    trunkGeometry: THREE.CylinderGeometry,
+    trunkMaterial: THREE.MeshStandardMaterial,
+    topGeometry: THREE.ConeGeometry,
+    topMaterial: THREE.MeshStandardMaterial
+  ): THREE.Group {
+    const tree = new THREE.Group();
+
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    trunk.castShadow = true;
+    trunk.receiveShadow = true;
+    trunk.position.y = 1;
+    tree.add(trunk);
+
+    const top = new THREE.Mesh(topGeometry, topMaterial);
+    top.castShadow = true;
+    top.receiveShadow = true;
+    top.position.y = 3.5;
+    tree.add(top);
+
+    // Add some random scaling for variety
+    const scale = 0.8 + Math.random() * 0.4;
+    tree.scale.set(scale, scale, scale);
+
+    return tree;
+  }
+
+  private isNearRoad(x: number, z: number): boolean {
+    const halfWorldSize = this.worldSize / 2;
+    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
+    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+
+    // Check distance to horizontal roads
+    for (let i = 0; i <= numBlocksZ; i++) {
+      const roadZ = -halfWorldSize + i * this.blockSize;
+      const distance = Math.abs(z - roadZ);
+
+      if (distance < this.roadWidth / 2 + 2) {
+        return true;
+      }
+    }
+
+    // Check distance to vertical roads
+    for (let i = 0; i <= numBlocksX; i++) {
+      const roadX = -halfWorldSize + i * this.blockSize;
+      const distance = Math.abs(x - roadX);
+
+      if (distance < this.roadWidth / 2 + 2) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   private generateObstacles(): void {
-    // Create obstacles like rocks, debris, etc.
-    const obstacleCount = 30;
+    // Create obstacles like rocks, debris, trash cans, mailboxes, etc.
 
     // Rock geometry
     const rockGeometries = [
@@ -312,7 +963,150 @@ export class World {
       metalness: 0.1,
     });
 
-    for (let i = 0; i < obstacleCount; i++) {
+    // Trash can geometry
+    const trashCanGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8);
+    const trashCanMaterial = new THREE.MeshStandardMaterial({
+      color: 0x444444, // Dark gray
+      roughness: 0.7,
+      metalness: 0.3,
+    });
+
+    // Mailbox geometry
+    const mailboxPostGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+    const mailboxBoxGeometry = new THREE.BoxGeometry(0.3, 0.2, 0.4);
+    const mailboxMaterial = new THREE.MeshStandardMaterial({
+      color: 0x222222, // Very dark gray
+      roughness: 0.7,
+      metalness: 0.3,
+    });
+
+    const halfWorldSize = this.worldSize / 2;
+    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
+    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+
+    // Place obstacles in each block
+    for (let blockX = 0; blockX < numBlocksX; blockX++) {
+      for (let blockZ = 0; blockZ < numBlocksZ; blockZ++) {
+        // Calculate the block's center position
+        const blockCenterX =
+          -halfWorldSize + blockX * this.blockSize + this.blockSize / 2;
+        const blockCenterZ =
+          -halfWorldSize + blockZ * this.blockSize + this.blockSize / 2;
+
+        // Add mailboxes and trash cans near houses
+        this.addHouseholdObstacles(
+          blockCenterX,
+          blockCenterZ,
+          trashCanGeometry,
+          trashCanMaterial,
+          mailboxPostGeometry,
+          mailboxBoxGeometry,
+          mailboxMaterial
+        );
+
+        // Add some random rocks in the block
+        this.addRandomRocks(
+          blockCenterX,
+          blockCenterZ,
+          rockGeometries,
+          rockMaterial
+        );
+      }
+    }
+
+    // Add some debris along roads
+    this.addRoadDebris(rockGeometries, rockMaterial);
+  }
+
+  private addHouseholdObstacles(
+    blockCenterX: number,
+    blockCenterZ: number,
+    trashCanGeometry: THREE.CylinderGeometry,
+    trashCanMaterial: THREE.MeshStandardMaterial,
+    mailboxPostGeometry: THREE.BoxGeometry,
+    mailboxBoxGeometry: THREE.BoxGeometry,
+    mailboxMaterial: THREE.MeshStandardMaterial
+  ): void {
+    // Calculate the usable area within the block (excluding roads and sidewalks)
+    const usableWidth =
+      this.blockSize - (this.roadWidth + this.sidewalkWidth * 2);
+    const usableHeight =
+      this.blockSize - (this.roadWidth + this.sidewalkWidth * 2);
+
+    // Calculate how many plots can fit in this block
+    const plotsPerRow = Math.floor(usableWidth / this.plotSize);
+    const plotsPerColumn = Math.floor(usableHeight / this.plotSize);
+
+    // Skip if the block is too small for any plots
+    if (plotsPerRow <= 0 || plotsPerColumn <= 0) return;
+
+    // Calculate the starting position for the first plot
+    const startX =
+      blockCenterX - (plotsPerRow * this.plotSize) / 2 + this.plotSize / 2;
+    const startZ =
+      blockCenterZ - (plotsPerColumn * this.plotSize) / 2 + this.plotSize / 2;
+
+    // Add obstacles to each plot
+    for (let plotX = 0; plotX < plotsPerRow; plotX++) {
+      for (let plotZ = 0; plotZ < plotsPerColumn; plotZ++) {
+        // Calculate the position for this plot
+        const plotCenterX = startX + plotX * this.plotSize;
+        const plotCenterZ = startZ + plotZ * this.plotSize;
+
+        // 80% chance to add a trash can
+        if (Math.random() < 0.8) {
+          const trashCan = new THREE.Mesh(trashCanGeometry, trashCanMaterial);
+          trashCan.castShadow = true;
+          trashCan.receiveShadow = true;
+
+          // Position the trash can near the edge of the plot
+          const angle = Math.random() * Math.PI * 2;
+          const distance = this.plotSize / 2 - 0.5; // 0.5 units from the edge
+          const x = plotCenterX + Math.cos(angle) * distance;
+          const z = plotCenterZ + Math.sin(angle) * distance;
+
+          trashCan.position.set(x, 0.4, z);
+          this.obstacles.add(trashCan);
+        }
+
+        // 70% chance to add a mailbox
+        if (Math.random() < 0.7) {
+          const mailbox = new THREE.Group();
+
+          // Create the post
+          const post = new THREE.Mesh(mailboxPostGeometry, mailboxMaterial);
+          post.position.y = 0.5;
+          mailbox.add(post);
+
+          // Create the box
+          const box = new THREE.Mesh(mailboxBoxGeometry, mailboxMaterial);
+          box.position.set(0, 1, 0.15);
+          mailbox.add(box);
+
+          // Position the mailbox near the front of the plot
+          const x = plotCenterX + (Math.random() - 0.5) * 2;
+          const z = plotCenterZ + this.plotSize / 2 - 0.3;
+
+          mailbox.position.set(x, 0, z);
+          mailbox.castShadow = true;
+          mailbox.receiveShadow = true;
+
+          this.obstacles.add(mailbox);
+        }
+      }
+    }
+  }
+
+  private addRandomRocks(
+    blockCenterX: number,
+    blockCenterZ: number,
+    rockGeometries: THREE.DodecahedronGeometry[],
+    rockMaterial: THREE.MeshStandardMaterial
+  ): void {
+    // Add 1-3 random rocks per block
+    const rockCount = 1 + Math.floor(Math.random() * 3);
+
+    for (let i = 0; i < rockCount; i++) {
       // Choose a random rock geometry
       const rockGeometry =
         rockGeometries[Math.floor(Math.random() * rockGeometries.length)];
@@ -321,9 +1115,15 @@ export class World {
       rock.castShadow = true;
       rock.receiveShadow = true;
 
-      // Position the rock randomly in the world
-      const x = (Math.random() - 0.5) * (this.worldSize - 2);
-      const z = (Math.random() - 0.5) * (this.worldSize - 2);
+      // Position the rock randomly within the block
+      const offsetX = (Math.random() - 0.5) * this.blockSize * 0.8;
+      const offsetZ = (Math.random() - 0.5) * this.blockSize * 0.8;
+
+      const x = blockCenterX + offsetX;
+      const z = blockCenterZ + offsetZ;
+
+      // Skip if the position is near a road
+      if (this.isNearRoad(x, z)) continue;
 
       // Get the terrain height at this position
       const terrainHeight = this.getTerrainHeightAt(x, z);
@@ -336,10 +1136,70 @@ export class World {
       rock.rotation.z = Math.random() * Math.PI;
 
       // Add some random scaling
-      const scale = 0.5 + Math.random() * 1.5;
+      const scale = 0.7 + Math.random() * 0.6;
       rock.scale.set(scale, scale, scale);
 
       this.obstacles.add(rock);
+    }
+  }
+
+  private addRoadDebris(
+    rockGeometries: THREE.DodecahedronGeometry[],
+    rockMaterial: THREE.MeshStandardMaterial
+  ): void {
+    const halfWorldSize = this.worldSize / 2;
+    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
+    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
+
+    // Add debris along roads
+    const debrisCount = 40;
+
+    for (let i = 0; i < debrisCount; i++) {
+      // Choose a random rock geometry for debris
+      const debrisGeometry =
+        rockGeometries[Math.floor(Math.random() * rockGeometries.length)];
+      const debris = new THREE.Mesh(debrisGeometry, rockMaterial);
+
+      debris.castShadow = true;
+      debris.receiveShadow = true;
+
+      // Position the debris near a random road
+      let x, z;
+
+      // Decide whether to place along a horizontal or vertical road
+      if (Math.random() < 0.5) {
+        // Horizontal road
+        const roadIndex = Math.floor(Math.random() * (numBlocksZ + 1));
+        const roadZ = -halfWorldSize + roadIndex * this.blockSize;
+
+        // Random position along the road
+        x = (Math.random() - 0.5) * this.worldSize;
+        z = roadZ + (Math.random() - 0.5) * this.roadWidth * 0.8;
+      } else {
+        // Vertical road
+        const roadIndex = Math.floor(Math.random() * (numBlocksX + 1));
+        const roadX = -halfWorldSize + roadIndex * this.blockSize;
+
+        // Random position along the road
+        x = roadX + (Math.random() - 0.5) * this.roadWidth * 0.8;
+        z = (Math.random() - 0.5) * this.worldSize;
+      }
+
+      // Get the terrain height at this position
+      const terrainHeight = this.getTerrainHeightAt(x, z);
+
+      debris.position.set(x, terrainHeight + 0.1, z);
+
+      // Add some random rotation
+      debris.rotation.x = Math.random() * Math.PI;
+      debris.rotation.y = Math.random() * Math.PI;
+      debris.rotation.z = Math.random() * Math.PI;
+
+      // Make debris smaller
+      const scale = 0.2 + Math.random() * 0.3;
+      debris.scale.set(scale, scale, scale);
+
+      this.obstacles.add(debris);
     }
   }
 

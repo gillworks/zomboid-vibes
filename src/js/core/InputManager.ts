@@ -92,16 +92,16 @@ export class InputManager {
     const moveVector = new THREE.Vector3(0, 0, 0);
 
     // Add movement components based on pressed keys, using isometric directions
-    if (this.keys["w"]) {
+    if (this.keys["w"] || this.keys["arrowup"]) {
       moveVector.add(this.ISO_DIRECTIONS.UP);
     }
-    if (this.keys["s"]) {
+    if (this.keys["s"] || this.keys["arrowdown"]) {
       moveVector.add(this.ISO_DIRECTIONS.DOWN);
     }
-    if (this.keys["a"]) {
+    if (this.keys["a"] || this.keys["arrowleft"]) {
       moveVector.add(this.ISO_DIRECTIONS.LEFT);
     }
-    if (this.keys["d"]) {
+    if (this.keys["d"] || this.keys["arrowright"]) {
       moveVector.add(this.ISO_DIRECTIONS.RIGHT);
     }
 
