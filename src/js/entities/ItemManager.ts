@@ -10,8 +10,8 @@ export class ItemManager {
   private loadingManager: THREE.LoadingManager;
 
   private items: Item[] = [];
-  private maxItems: number = 30;
-  private spawnInterval: number = 10; // seconds
+  private maxItems: number = 90;
+  private spawnInterval: number = 3.33;
   private timeSinceLastSpawn: number = 0;
 
   // Item types and their probabilities
@@ -77,7 +77,7 @@ export class ItemManager {
 
   private spawnInitialItems(): void {
     // Spawn a few items at the start
-    const initialCount = 10;
+    const initialCount = 30;
     for (let i = 0; i < initialCount; i++) {
       this.spawnItem();
     }
