@@ -94,7 +94,7 @@ export class Zombie {
     blood.castShadow = true;
     characterGroup.add(blood);
 
-    // Arms - thinner and more angular, slightly longer for zombie reach
+    // Arms - straight out in front for classic zombie pose
     // Left arm
     const armGeometry = new THREE.BoxGeometry(0.2, 0.6, 0.2);
     const armMaterial = new THREE.MeshStandardMaterial({
@@ -105,10 +105,10 @@ export class Zombie {
 
     // Create arm groups to allow for better positioning
     const leftArmGroup = new THREE.Group();
-    leftArmGroup.position.set(-0.4, 1.1, 0);
-    // Rotate arm group slightly downward and outward for zombie pose
-    leftArmGroup.rotation.z = 0.4;
-    leftArmGroup.rotation.x = 0.2;
+    leftArmGroup.position.set(-0.3, 1.2, 0);
+    // Rotate arm group to point forward
+    leftArmGroup.rotation.x = -Math.PI / 2.5; // Slightly upward
+    leftArmGroup.rotation.z = 0.2; // Slightly outward
     characterGroup.add(leftArmGroup);
 
     const leftArm = new THREE.Mesh(armGeometry, armMaterial);
@@ -119,10 +119,10 @@ export class Zombie {
 
     // Right arm
     const rightArmGroup = new THREE.Group();
-    rightArmGroup.position.set(0.4, 1.1, 0);
-    // Rotate arm group slightly downward and outward for zombie pose
-    rightArmGroup.rotation.z = -0.4;
-    rightArmGroup.rotation.x = 0.2;
+    rightArmGroup.position.set(0.3, 1.2, 0);
+    // Rotate arm group to point forward
+    rightArmGroup.rotation.x = -Math.PI / 2.5; // Slightly upward
+    rightArmGroup.rotation.z = -0.2; // Slightly outward
     characterGroup.add(rightArmGroup);
 
     const rightArm = new THREE.Mesh(armGeometry, armMaterial);
@@ -142,14 +142,14 @@ export class Zombie {
     // Left hand
     const leftHand = new THREE.Mesh(handGeometry, handMaterial);
     leftHand.position.set(0, -0.6, 0);
-    leftHand.rotation.x = 0.3; // Claw-like angle
+    leftHand.rotation.x = -0.3; // Claw-like angle
     leftHand.castShadow = true;
     leftArmGroup.add(leftHand);
 
     // Right hand
     const rightHand = new THREE.Mesh(handGeometry, handMaterial);
     rightHand.position.set(0, -0.6, 0);
-    rightHand.rotation.x = 0.3; // Claw-like angle
+    rightHand.rotation.x = -0.3; // Claw-like angle
     rightHand.castShadow = true;
     rightArmGroup.add(rightHand);
 
@@ -231,6 +231,9 @@ export class Zombie {
 
     // Rotate to face the player
     this.zombieGroup.rotation.y = angle;
+
+    // Animate arms with a slight swaying motion
+    this.animateArms(delta);
 
     // If within attack range, attack player
     if (distance <= this.attackRange) {
@@ -344,5 +347,37 @@ export class Zombie {
 
   public isDead(): boolean {
     return this.isDead_;
+  }
+
+  // Add a method to animate the arms
+  private animateArms(delta: number): void {
+    // Find the arm groups
+    const characterGroup = this.zombieGroup.children[0] as THREE.Group;
+    if (!characterGroup) return;
+
+    // Look for the arm groups among the character group's children
+    let leftArmGroup: THREE.Group | undefined;
+    let rightArmGroup: THREE.Group | undefined;
+
+    for (const child of characterGroup.children) {
+      if (child instanceof THREE.Group) {
+        // Identify arm groups by their position
+        if (child.position.x < 0) {
+          leftArmGroup = child;
+        } else if (child.position.x > 0) {
+          rightArmGroup = child;
+        }
+      }
+    }
+
+    if (leftArmGroup && rightArmGroup) {
+      // Calculate a simple sine wave for the swaying motion
+      const time = Date.now() * 0.001;
+      const swayAmount = Math.sin(time * 2) * 0.05;
+
+      // Apply the sway to the arm rotations
+      leftArmGroup.rotation.z = 0.2 + swayAmount;
+      rightArmGroup.rotation.z = -0.2 - swayAmount;
+    }
   }
 }
