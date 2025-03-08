@@ -312,13 +312,6 @@ export class World {
       flatShading: true,
     });
 
-    const forestMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4caf50, // Green for grass
-      roughness: 0.8,
-      metalness: 0.1,
-      flatShading: true,
-    });
-
     // Create two separate terrain meshes
     // 1. Neighborhood terrain (flat, gray)
     const neighborhoodGeometry = new THREE.PlaneGeometry(
@@ -357,29 +350,25 @@ export class World {
       -neighborhoodHalfSize - this.worldSize / 4,
       0,
       this.worldSize / 2,
-      this.worldSize,
-      forestMaterial
+      this.worldSize
     ); // Left
     this.createForestSection(
       neighborhoodHalfSize + this.worldSize / 4,
       0,
       this.worldSize / 2,
-      this.worldSize,
-      forestMaterial
+      this.worldSize
     ); // Right
     this.createForestSection(
       0,
       -neighborhoodHalfSize - this.worldSize / 4,
       this.worldSize,
-      this.worldSize / 2,
-      forestMaterial
+      this.worldSize / 2
     ); // Top
     this.createForestSection(
       0,
       neighborhoodHalfSize + this.worldSize / 4,
       this.worldSize,
-      this.worldSize / 2,
-      forestMaterial
+      this.worldSize / 2
     ); // Bottom
 
     // Store the neighborhood size for other methods to use
@@ -394,8 +383,7 @@ export class World {
     x: number,
     z: number,
     width: number,
-    depth: number,
-    material: THREE.Material
+    depth: number
   ): void {
     const forestGeometry = new THREE.PlaneGeometry(
       width,
@@ -422,7 +410,60 @@ export class World {
     forestGeometry.computeVertexNormals();
     forestGeometry.attributes.position.needsUpdate = true;
 
-    const forestTerrain = new THREE.Mesh(forestGeometry, material);
+    // Create a canvas texture for the forest grass (similar to neighborhood grass but darker)
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; // Higher resolution for forest
+    canvas.height = 512;
+    const context = canvas.getContext("2d");
+
+    if (context) {
+      // Fill with base grass color (darker than neighborhood grass)
+      context.fillStyle = "#4caf50"; // Darker green for forest
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Add subtle grass texture pattern
+      context.fillStyle = "#43a047"; // Even darker green for texture
+
+      // Create random grass blades and some forest floor details
+      for (let i = 0; i < 5000; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const width = 1 + Math.random() * 2;
+        const height = 2 + Math.random() * 6;
+
+        context.fillRect(x, y, width, height);
+      }
+
+      // Add some random darker patches to simulate forest floor variation
+      context.fillStyle = "#388e3c";
+      for (let i = 0; i < 100; i++) {
+        const patchSize = 10 + Math.random() * 30;
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        context.beginPath();
+        context.arc(x, y, patchSize, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+
+    const forestTexture = new THREE.CanvasTexture(canvas);
+    forestTexture.wrapS = THREE.RepeatWrapping;
+    forestTexture.wrapT = THREE.RepeatWrapping;
+
+    // Scale texture based on forest section size
+    const textureRepeat = Math.max(width, depth) / 20;
+    forestTexture.repeat.set(textureRepeat, textureRepeat);
+
+    // Create forest material with the texture
+    const forestMaterial = new THREE.MeshStandardMaterial({
+      map: forestTexture,
+      color: 0x4caf50, // Base green color
+      roughness: 0.9,
+      metalness: 0.1,
+      flatShading: true,
+    });
+
+    const forestTerrain = new THREE.Mesh(forestGeometry, forestMaterial);
     forestTerrain.rotation.x = -Math.PI / 2;
     forestTerrain.receiveShadow = true;
     forestTerrain.position.set(x, 0, z);
