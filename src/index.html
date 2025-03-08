@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zomboid Vibes</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="game-container">
+      <div id="loading-screen">
+        <div class="loading-content">
+          <h1>Zomboid Vibes</h1>
+          <div class="progress-bar-container">
+            <div id="progress-bar"></div>
+          </div>
+          <p id="loading-text">Loading...</p>
+        </div>
+      </div>
+      <div id="ui-container">
+        <div id="health-bar-container">
+          <div id="health-bar"></div>
+        </div>
+        <div id="hunger-bar-container">
+          <div id="hunger-bar"></div>
+        </div>
+        <div id="inventory-button">Inventory</div>
+        <div id="inventory-panel" class="hidden">
+          <h2>Inventory</h2>
+          <div id="inventory-slots"></div>
+          <button id="close-inventory">Close</button>
+        </div>
+      </div>
+      <div id="game-over" class="hidden">
+        <h2>You Died</h2>
+        <button id="restart-button">Restart</button>
+      </div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
