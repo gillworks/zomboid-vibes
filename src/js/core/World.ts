@@ -858,9 +858,6 @@ export class World {
     // Position the house
     house.position.set(x, 0, z);
 
-    // Add a small random rotation for variety
-    house.rotation.y = Math.random() * Math.PI * 0.1;
-
     // Add the house to the buildings group
     this.buildings.add(house);
 
