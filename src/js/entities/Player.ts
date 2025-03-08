@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import * as TWEEN from "@tweenjs/tween.js";
+import { Zombie } from "./Zombie";
 
 export class Player {
   private scene: THREE.Scene;
@@ -32,6 +33,12 @@ export class Player {
   // Animation properties
   private animationTime: number = 0;
   private walkingSpeed: number = 5; // Animation speed multiplier
+
+  private attackRange: number = 2;
+  private attackDamage: number = 25;
+  private attackCooldown: number = 0.5; // seconds
+  private timeSinceLastAttack: number = 0;
+  private isAttacking: boolean = false;
 
   constructor(
     scene: THREE.Scene,
@@ -261,6 +268,11 @@ export class Player {
       this.resetLimbPositions();
     }
 
+    // Update attack cooldown
+    if (this.timeSinceLastAttack < this.attackCooldown) {
+      this.timeSinceLastAttack += delta;
+    }
+
     // Decrease hunger over time
     this.hunger -= 0.01;
     if (this.hunger < 0) {
@@ -428,6 +440,8 @@ export class Player {
     this.hunger = 100;
     this.inventory = Array(this.maxInventorySlots).fill(null);
     this.equippedItem = null;
+    this.timeSinceLastAttack = 0;
+    this.isAttacking = false;
 
     // Reset position
     this.playerGroup.position.set(0, 0, 0);
@@ -480,5 +494,101 @@ export class Player {
 
     // No need to reset feet positions as they're now parented to legs
     // and will move automatically with their parent
+  }
+
+  public attack(zombies: Zombie[]): void {
+    // Check if we can attack
+    if (this.timeSinceLastAttack < this.attackCooldown || this.isAttacking) {
+      return;
+    }
+
+    // Reset cooldown
+    this.timeSinceLastAttack = 0;
+    this.isAttacking = true;
+
+    // Play attack animation
+    this.animateAttack();
+
+    // Get player position and forward direction
+    const playerPos = this.playerGroup.position.clone();
+    const playerForward = new THREE.Vector3(0, 0, -1);
+    playerForward.applyEuler(this.playerGroup.rotation);
+
+    // Check for zombies in range
+    for (const zombie of zombies) {
+      if (zombie.isDead()) continue;
+
+      const zombiePos = zombie.getPosition();
+      const distanceToZombie = playerPos.distanceTo(zombiePos);
+
+      // Check if zombie is within attack range
+      if (distanceToZombie <= this.attackRange) {
+        // Calculate angle between player forward and direction to zombie
+        const directionToZombie = new THREE.Vector3()
+          .subVectors(zombiePos, playerPos)
+          .normalize();
+
+        const angleToZombie = playerForward.angleTo(directionToZombie);
+
+        // Check if zombie is in front of the player (within a 120-degree arc)
+        if (angleToZombie <= Math.PI / 3) {
+          // Deal damage to zombie
+          zombie.takeDamage(this.attackDamage);
+        }
+      }
+    }
+  }
+
+  private animateAttack(): void {
+    // Store original arm rotations
+    const leftArmOriginalRotation = this.leftArm.rotation.clone();
+    const rightArmOriginalRotation = this.rightArm.rotation.clone();
+
+    // Quick forward swing animation
+    const swingForward = new TWEEN.Tween({
+      leftArmRotationX: leftArmOriginalRotation.x,
+      rightArmRotationX: rightArmOriginalRotation.x,
+    })
+      .to(
+        {
+          leftArmRotationX: -Math.PI / 2,
+          rightArmRotationX: -Math.PI / 2,
+        },
+        150
+      )
+      .easing(TWEEN.Easing.Cubic.Out)
+      .onUpdate((obj) => {
+        if (this.leftArm) this.leftArm.rotation.x = obj.leftArmRotationX;
+        if (this.rightArm) this.rightArm.rotation.x = obj.rightArmRotationX;
+      })
+      .start();
+
+    // Return to original position
+    swingForward.onComplete(() => {
+      new TWEEN.Tween({
+        leftArmRotationX: -Math.PI / 2,
+        rightArmRotationX: -Math.PI / 2,
+      })
+        .to(
+          {
+            leftArmRotationX: leftArmOriginalRotation.x,
+            rightArmRotationX: rightArmOriginalRotation.x,
+          },
+          300
+        )
+        .easing(TWEEN.Easing.Cubic.Out)
+        .onUpdate((obj) => {
+          if (this.leftArm) this.leftArm.rotation.x = obj.leftArmRotationX;
+          if (this.rightArm) this.rightArm.rotation.x = obj.rightArmRotationX;
+        })
+        .onComplete(() => {
+          this.isAttacking = false;
+        })
+        .start();
+    });
+  }
+
+  public canAttack(): boolean {
+    return this.timeSinceLastAttack >= this.attackCooldown && !this.isAttacking;
   }
 }

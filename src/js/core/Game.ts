@@ -100,20 +100,17 @@ export class Game {
   }
 
   public init(): void {
-    // Initialize the world
+    // Create the world
     this.world = new World(this.scene, this.loadingManager);
     this.world.init();
 
-    // Initialize the player
+    // Create the player
     this.player = new Player(this.scene, this.camera, this.loadingManager);
 
-    // Initialize the input manager
+    // Create the input manager
     this.inputManager = new InputManager(this.player);
 
-    // Initialize the UI manager
-    this.uiManager = new UIManager(this.player);
-
-    // Initialize the zombie manager
+    // Create the zombie manager
     this.zombieManager = new ZombieManager(
       this.scene,
       this.player,
@@ -121,7 +118,10 @@ export class Game {
       this.loadingManager
     );
 
-    // Initialize the item manager
+    // Connect zombie manager to input manager
+    this.inputManager.setZombieManager(this.zombieManager);
+
+    // Create the item manager
     this.itemManager = new ItemManager(
       this.scene,
       this.player,
@@ -129,30 +129,15 @@ export class Game {
       this.loadingManager
     );
 
-    // Set up the lights
+    // Create the UI manager
+    this.uiManager = new UIManager(this.player);
+    this.uiManager.init();
+
+    // Set up lights
     this.setupLights();
 
     // Start the animation loop
     this.animate();
-
-    // Manually trigger the loading completion since we're not loading external assets
-    setTimeout(() => {
-      // Simulate loading progress
-      const progressBar = document.getElementById("progress-bar");
-      if (progressBar) {
-        progressBar.style.width = "100%";
-      }
-
-      const loadingText = document.getElementById("loading-text");
-      if (loadingText) {
-        loadingText.textContent = "Loading... 100%";
-      }
-
-      // Trigger the onLoad callback
-      if (this.loadingManager.onLoad) {
-        this.loadingManager.onLoad();
-      }
-    }, 1500); // Give a short delay to show the loading screen
   }
 
   private setupLights(): void {

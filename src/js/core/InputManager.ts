@@ -1,8 +1,10 @@
 import { Player } from "../entities/Player";
 import * as THREE from "three";
+import { ZombieManager } from "../entities/ZombieManager";
 
 export class InputManager {
   private player: Player;
+  private zombieManager?: ZombieManager;
   private keys: { [key: string]: boolean } = {};
 
   // Define isometric directions
@@ -24,6 +26,11 @@ export class InputManager {
     this.setupUIListeners();
   }
 
+  // Set the zombie manager reference
+  public setZombieManager(zombieManager: ZombieManager): void {
+    this.zombieManager = zombieManager;
+  }
+
   private onKeyDown(event: KeyboardEvent): void {
     this.keys[event.key.toLowerCase()] = true;
 
@@ -33,6 +40,11 @@ export class InputManager {
     // Handle inventory
     if (event.key.toLowerCase() === "i") {
       this.toggleInventory();
+    }
+
+    // Handle attack with space key
+    if (event.key === " " || event.key === "space") {
+      this.handlePlayerAttack();
     }
   }
 
@@ -46,6 +58,15 @@ export class InputManager {
       // Handle player movement for remaining pressed keys
       this.handlePlayerMovement();
     }
+  }
+
+  private handlePlayerAttack(): void {
+    // Make sure we have a zombie manager
+    if (!this.zombieManager) return;
+
+    // Get zombies and attack
+    const zombies = this.zombieManager.getZombies();
+    this.player.attack(zombies);
   }
 
   private handlePlayerMovement(): void {
