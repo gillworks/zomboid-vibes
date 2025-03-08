@@ -35,72 +35,163 @@ export class Zombie {
   }
 
   private createZombieModel(): void {
-    // Create a simple zombie model
-    // Body
-    const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8);
+    // Create a more realistic zombie model similar to the player character
+
+    // Create a group for the zombie character
+    const characterGroup = new THREE.Group();
+
+    // Body - use a box for a more PZ-like character
+    const bodyGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.3);
     const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2a6e2a, // Green
-      roughness: 0.7,
-      metalness: 0.3,
+      color: 0x4a6e4a, // Zombie green
+      roughness: 0.8,
+      metalness: 0.2,
     });
     this.zombieBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    this.zombieBody.position.y = 0.75;
+    this.zombieBody.position.y = 0.9;
     this.zombieBody.castShadow = true;
-    this.zombieGroup.add(this.zombieBody);
+    characterGroup.add(this.zombieBody);
 
-    // Head
-    const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+    // Add details to the body (tattered clothes)
+    const clothesDetailGeometry = new THREE.BoxGeometry(0.65, 0.85, 0.35);
+    const clothesDetailMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3a5a3a,
+      roughness: 0.9,
+      metalness: 0.1,
+      wireframe: true,
+    });
+    const clothesDetail = new THREE.Mesh(
+      clothesDetailGeometry,
+      clothesDetailMaterial
+    );
+    clothesDetail.position.copy(this.zombieBody.position);
+    characterGroup.add(clothesDetail);
+
+    // Head - smaller and more square-ish for PZ style
+    const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
     const headMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2a6e2a, // Green
+      color: 0xc8d8a0, // Sickly green-gray skin tone
       roughness: 0.7,
       metalness: 0.1,
     });
     this.zombieHead = new THREE.Mesh(headGeometry, headMaterial);
-    this.zombieHead.position.y = 1.85;
+    this.zombieHead.position.y = 1.55;
     this.zombieHead.castShadow = true;
-    this.zombieGroup.add(this.zombieHead);
+    characterGroup.add(this.zombieHead);
 
-    // Arms
-    const armGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1, 8);
+    // Add blood stains to the head
+    const bloodGeometry = new THREE.BoxGeometry(0.42, 0.15, 0.42);
+    const bloodMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8b0000, // Dark red blood
+      roughness: 1.0,
+      metalness: 0.0,
+      transparent: true,
+      opacity: 0.7,
+    });
+    const blood = new THREE.Mesh(bloodGeometry, bloodMaterial);
+    blood.position.y = 1.65;
+    blood.scale.set(0.7, 0.3, 0.7);
+    blood.castShadow = true;
+    characterGroup.add(blood);
+
+    // Arms - thinner and more angular, slightly longer for zombie reach
+    // Left arm
+    const armGeometry = new THREE.BoxGeometry(0.2, 0.7, 0.2);
     const armMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2a6e2a, // Green
-      roughness: 0.7,
-      metalness: 0.3,
+      color: 0x4a6e4a, // Match zombie body
+      roughness: 0.8,
+      metalness: 0.2,
     });
 
-    // Left arm
     const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    leftArm.position.set(-0.7, 0.75, 0);
-    leftArm.rotation.z = Math.PI / 2;
+    leftArm.position.set(-0.45, 0.9, 0);
+    // Rotate arm slightly outward for zombie pose
+    leftArm.rotation.z = 0.3;
     leftArm.castShadow = true;
-    this.zombieGroup.add(leftArm);
+    characterGroup.add(leftArm);
 
     // Right arm
     const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-    rightArm.position.set(0.7, 0.75, 0);
-    rightArm.rotation.z = -Math.PI / 2;
+    rightArm.position.set(0.45, 0.9, 0);
+    // Rotate arm slightly outward for zombie pose
+    rightArm.rotation.z = -0.3;
     rightArm.castShadow = true;
-    this.zombieGroup.add(rightArm);
+    characterGroup.add(rightArm);
 
-    // Legs
-    const legGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1, 8);
-    const legMaterial = new THREE.MeshStandardMaterial({
-      color: 0x1a4a1a, // Darker green
+    // Hands - make them claw-like
+    const handGeometry = new THREE.BoxGeometry(0.2, 0.15, 0.15);
+    const handMaterial = new THREE.MeshStandardMaterial({
+      color: 0xc8d8a0, // Match zombie skin
       roughness: 0.7,
+      metalness: 0.1,
+    });
+
+    // Left hand
+    const leftHand = new THREE.Mesh(handGeometry, handMaterial);
+    leftHand.position.set(-0.5, 0.5, 0);
+    leftHand.rotation.z = 0.5; // Claw-like angle
+    leftHand.castShadow = true;
+    characterGroup.add(leftHand);
+
+    // Right hand
+    const rightHand = new THREE.Mesh(handGeometry, handMaterial);
+    rightHand.position.set(0.5, 0.5, 0);
+    rightHand.rotation.z = -0.5; // Claw-like angle
+    rightHand.castShadow = true;
+    characterGroup.add(rightHand);
+
+    // Legs - use boxes for a more PZ-like character
+    const legGeometry = new THREE.BoxGeometry(0.25, 0.7, 0.25);
+    const legMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2a2a2a, // Dark tattered pants
+      roughness: 0.8,
       metalness: 0.2,
     });
 
     // Left leg
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-0.3, -0.25, 0);
+    leftLeg.position.set(-0.2, 0.35, 0);
+    // Slight angle for shambling gait
+    leftLeg.rotation.x = 0.1;
     leftLeg.castShadow = true;
-    this.zombieGroup.add(leftLeg);
+    characterGroup.add(leftLeg);
 
     // Right leg
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-    rightLeg.position.set(0.3, -0.25, 0);
+    rightLeg.position.set(0.2, 0.35, 0);
+    // Slight angle for shambling gait
+    rightLeg.rotation.x = -0.1;
     rightLeg.castShadow = true;
-    this.zombieGroup.add(rightLeg);
+    characterGroup.add(rightLeg);
+
+    // Feet
+    const footGeometry = new THREE.BoxGeometry(0.25, 0.1, 0.35);
+    const footMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3a3a3a, // Dark shoes
+      roughness: 0.9,
+      metalness: 0.3,
+    });
+
+    // Left foot
+    const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+    leftFoot.position.set(-0.2, 0.05, 0.05);
+    leftFoot.castShadow = true;
+    characterGroup.add(leftFoot);
+
+    // Right foot
+    const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+    rightFoot.position.set(0.2, 0.05, 0.05);
+    rightFoot.castShadow = true;
+    characterGroup.add(rightFoot);
+
+    // Add the character group to the zombie group
+    this.zombieGroup.add(characterGroup);
+
+    // Rotate the entire character group to face forward (negative Z direction)
+    characterGroup.rotation.y = Math.PI;
+
+    // Adjust the overall scale to match the player
+    this.zombieGroup.scale.set(1.2, 1.2, 1.2);
   }
 
   public update(delta: number): void {
@@ -121,8 +212,12 @@ export class Zombie {
     // Calculate distance to player
     const distance = zombiePos.distanceTo(playerPos);
 
-    // Look at player
-    this.zombieGroup.lookAt(playerPos);
+    // Calculate the angle to face the player
+    // Add PI to the angle to account for the initial rotation of the character model
+    const angle = Math.atan2(direction.x, direction.z) + Math.PI;
+
+    // Rotate to face the player
+    this.zombieGroup.rotation.y = angle;
 
     // If within attack range, attack player
     if (distance <= this.attackRange) {
@@ -212,7 +307,7 @@ export class Zombie {
       0x666666
     );
 
-    // Fall to the ground
+    // Fall to the ground - rotate the entire zombie group
     this.zombieGroup.rotation.x = Math.PI / 2;
     this.zombieGroup.position.y = 0.5;
 
