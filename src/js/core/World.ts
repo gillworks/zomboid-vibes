@@ -75,9 +75,10 @@ export class World {
     // Add buildings to colliders
     this.buildings.children.forEach((building) => {
       this.colliders.push(building);
-      // Buildings are box-shaped, so use half the width as collision radius
+      // Buildings are box-shaped with width and depth of 5
+      // For a box, the maximum distance from center to corner in XZ plane is sqrt(5²/2 + 5²/2) = 5
       // Using a slightly smaller radius than actual size for better gameplay
-      this.collisionRadius[building.id] = 2.3; // Buildings are 5x5, so radius is ~2.5
+      this.collisionRadius[building.id] = 3.0; // Increased from 2.3 to 3.0
     });
 
     // Add trees to colliders
@@ -105,7 +106,13 @@ export class World {
   ): boolean {
     for (const collider of this.colliders) {
       const colliderPos = collider.position.clone();
-      const distance = position.distanceTo(colliderPos);
+
+      // Create 2D positions (ignoring Y-axis) for distance calculation
+      const pos2D = new THREE.Vector2(position.x, position.z);
+      const colliderPos2D = new THREE.Vector2(colliderPos.x, colliderPos.z);
+
+      // Calculate distance in 2D (XZ plane only)
+      const distance = pos2D.distanceTo(colliderPos2D);
       const collisionDistance = radius + this.collisionRadius[collider.id];
 
       if (distance < collisionDistance) {
@@ -127,13 +134,24 @@ export class World {
       return intendedPosition;
     }
 
-    // Otherwise, find the direction of movement
-    const moveDirection = new THREE.Vector3()
-      .subVectors(intendedPosition, currentPosition)
-      .normalize();
+    // Otherwise, find the direction of movement in 2D (XZ plane)
+    const moveDirection2D = new THREE.Vector2(
+      intendedPosition.x - currentPosition.x,
+      intendedPosition.z - currentPosition.z
+    ).normalize();
 
-    // Try different distances along that direction until we find a valid position
-    const maxDistance = currentPosition.distanceTo(intendedPosition);
+    // Calculate the maximum distance in 2D
+    const currentPos2D = new THREE.Vector2(
+      currentPosition.x,
+      currentPosition.z
+    );
+    const intendedPos2D = new THREE.Vector2(
+      intendedPosition.x,
+      intendedPosition.z
+    );
+    const maxDistance = currentPos2D.distanceTo(intendedPos2D);
+
+    // Start with current position
     let validPosition = currentPosition.clone();
 
     // Binary search for the maximum valid distance
@@ -143,9 +161,18 @@ export class World {
 
     while (maxDist - minDist > precision) {
       const midDist = (minDist + maxDist) / 2;
-      const testPosition = currentPosition
+
+      // Calculate test position in 2D
+      const testPos2D = currentPos2D
         .clone()
-        .add(moveDirection.clone().multiplyScalar(midDist));
+        .add(moveDirection2D.clone().multiplyScalar(midDist));
+
+      // Convert back to 3D for collision check
+      const testPosition = new THREE.Vector3(
+        testPos2D.x,
+        intendedPosition.y, // Keep the original Y value
+        testPos2D.y // y in 2D is z in 3D
+      );
 
       if (this.checkCollision(testPosition, radius)) {
         maxDist = midDist;
