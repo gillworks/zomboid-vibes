@@ -729,18 +729,28 @@ export class World {
   }
 
   private generateTrees(): void {
-    // Tree trunk
-    const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.4, 2, 8);
-    const trunkMaterial = new THREE.MeshStandardMaterial({
-      color: 0x8b4513,
+    // Create different tree types
+
+    // Pine trees for the forest
+    const pineTreeTrunkGeometry = new THREE.CylinderGeometry(0.2, 0.4, 2, 8);
+    const treeTrunkMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8b4513, // Brown
       roughness: 0.9,
       metalness: 0.1,
     });
 
-    // Tree top
-    const topGeometry = new THREE.ConeGeometry(1.5, 3, 8);
-    const topMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2e8b57,
+    const pineTreeTopGeometry = new THREE.ConeGeometry(1.5, 3, 8);
+    const pineTreeTopMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2e8b57, // Dark green
+      roughness: 0.8,
+      metalness: 0.1,
+    });
+
+    // Bushy trees for the neighborhood
+    const bushyTreeTrunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 1.5, 8);
+    const bushyTreeTopGeometry = new THREE.SphereGeometry(1.8, 8, 6);
+    const bushyTreeTopMaterial = new THREE.MeshStandardMaterial({
+      color: 0x32cd32, // Lime green
       roughness: 0.8,
       metalness: 0.1,
     });
@@ -749,27 +759,42 @@ export class World {
     const numBlocksX = Math.floor(this.worldSize / this.blockSize);
     const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
 
-    // Place trees along sidewalks
-    for (let i = 0; i <= numBlocksZ; i++) {
-      for (let j = 0; j <= numBlocksX; j++) {
-        const x = -halfWorldSize + j * this.blockSize;
-        const z = -halfWorldSize + i * this.blockSize;
+    // 1. Generate forest around the neighborhood
+    this.generateForest(
+      pineTreeTrunkGeometry,
+      treeTrunkMaterial,
+      pineTreeTopGeometry,
+      pineTreeTopMaterial
+    );
 
-        // Place trees at regular intervals along sidewalks
-        this.placeSidewalkTrees(
-          x,
-          z,
-          trunkGeometry,
-          trunkMaterial,
-          topGeometry,
-          topMaterial
-        );
-      }
-    }
+    // 2. Generate bushy trees within neighborhood lots
+    this.generateNeighborhoodTrees(
+      bushyTreeTrunkGeometry,
+      treeTrunkMaterial,
+      bushyTreeTopGeometry,
+      bushyTreeTopMaterial
+    );
+  }
 
-    // Add some random trees in empty areas
-    const randomTreeCount = 30;
-    for (let i = 0; i < randomTreeCount; i++) {
+  private generateForest(
+    trunkGeometry: THREE.CylinderGeometry,
+    trunkMaterial: THREE.MeshStandardMaterial,
+    topGeometry: THREE.ConeGeometry | THREE.SphereGeometry,
+    topMaterial: THREE.MeshStandardMaterial
+  ): void {
+    const halfWorldSize = this.worldSize / 2;
+
+    // Define the neighborhood boundary (slightly larger than the actual neighborhood)
+    const neighborhoodMargin = 10;
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize +
+      neighborhoodMargin;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+
+    // Number of trees in the forest
+    const forestTreeCount = 300;
+
+    for (let i = 0; i < forestTreeCount; i++) {
       // Create a tree
       const tree = this.createTree(
         trunkGeometry,
@@ -778,20 +803,26 @@ export class World {
         topMaterial
       );
 
-      // Try to find a position that doesn't collide with roads or buildings
+      // Position the tree outside the neighborhood but within the world bounds
+      let x, z;
       let validPosition = false;
       let attempts = 0;
-      let x, z;
 
       while (!validPosition && attempts < 10) {
-        x = (Math.random() - 0.5) * (this.worldSize - 10);
-        z = (Math.random() - 0.5) * (this.worldSize - 10);
+        // Generate a position within the world bounds
+        x = (Math.random() - 0.5) * this.worldSize;
+        z = (Math.random() - 0.5) * this.worldSize;
 
-        // Check if the position is near a road
-        const nearRoad = this.isNearRoad(x, z);
+        // Check if the position is outside the neighborhood
+        const isOutsideNeighborhood =
+          Math.abs(x) > neighborhoodHalfSize - 5 ||
+          Math.abs(z) > neighborhoodHalfSize - 5;
 
-        // If not near a road, it's a valid position
-        if (!nearRoad) {
+        // Check if the position is within the world bounds
+        const isWithinWorldBounds =
+          Math.abs(x) < halfWorldSize - 2 && Math.abs(z) < halfWorldSize - 2;
+
+        if (isOutsideNeighborhood && isWithinWorldBounds) {
           validPosition = true;
         }
 
@@ -808,86 +839,101 @@ export class World {
         // Add some random rotation
         tree.rotation.y = Math.random() * Math.PI * 2;
 
+        // Add some random scaling for dense forest feel
+        const scale = 0.8 + Math.random() * 0.7;
+        tree.scale.set(scale, scale, scale);
+
         this.trees.add(tree);
       }
     }
   }
 
-  private placeSidewalkTrees(
-    x: number,
-    z: number,
+  private generateNeighborhoodTrees(
     trunkGeometry: THREE.CylinderGeometry,
     trunkMaterial: THREE.MeshStandardMaterial,
-    topGeometry: THREE.ConeGeometry,
+    topGeometry: THREE.SphereGeometry,
     topMaterial: THREE.MeshStandardMaterial
   ): void {
-    // Place trees along the sidewalks at regular intervals
-    const treeSpacing = 5; // Space between trees
-    const sidewalkOffset = this.roadWidth / 2 + this.sidewalkWidth + 0.5; // Offset from road center
+    const halfWorldSize = this.worldSize / 2;
+    const numBlocksX = Math.floor(this.worldSize / this.blockSize);
+    const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
 
-    // Calculate how many trees can fit along each side of the block
-    const treesPerSide = Math.floor(this.blockSize / treeSpacing);
+    // For each block in the grid
+    for (let blockX = 0; blockX < numBlocksX; blockX++) {
+      for (let blockZ = 0; blockZ < numBlocksZ; blockZ++) {
+        // Calculate the block's center position
+        const blockCenterX =
+          -halfWorldSize + blockX * this.blockSize + this.blockSize / 2;
+        const blockCenterZ =
+          -halfWorldSize + blockZ * this.blockSize + this.blockSize / 2;
 
-    // Skip if no trees can fit
-    if (treesPerSide <= 0) return;
+        // Calculate the usable area within the block (excluding roads and sidewalks)
+        const usableWidth =
+          this.blockSize - (this.roadWidth + this.sidewalkWidth * 2);
+        const usableHeight =
+          this.blockSize - (this.roadWidth + this.sidewalkWidth * 2);
 
-    // Place trees along the horizontal sidewalks
-    for (let i = 1; i < treesPerSide; i++) {
-      const treeX = x - this.blockSize / 2 + i * treeSpacing;
+        // Calculate how many plots can fit in this block
+        const plotsPerRow = Math.floor(usableWidth / this.plotSize);
+        const plotsPerColumn = Math.floor(usableHeight / this.plotSize);
 
-      // Only place a tree with 70% probability for variety
-      if (Math.random() < 0.7) {
-        // Tree on the top sidewalk
-        const topTree = this.createTree(
-          trunkGeometry,
-          trunkMaterial,
-          topGeometry,
-          topMaterial
-        );
-        topTree.position.set(treeX, 0, z - sidewalkOffset);
-        this.trees.add(topTree);
-      }
+        // Skip if the block is too small for any plots
+        if (plotsPerRow <= 0 || plotsPerColumn <= 0) continue;
 
-      if (Math.random() < 0.7) {
-        // Tree on the bottom sidewalk
-        const bottomTree = this.createTree(
-          trunkGeometry,
-          trunkMaterial,
-          topGeometry,
-          topMaterial
-        );
-        bottomTree.position.set(treeX, 0, z + sidewalkOffset);
-        this.trees.add(bottomTree);
-      }
-    }
+        // Calculate the starting position for the first plot
+        const startX =
+          blockCenterX - (plotsPerRow * this.plotSize) / 2 + this.plotSize / 2;
+        const startZ =
+          blockCenterZ -
+          (plotsPerColumn * this.plotSize) / 2 +
+          this.plotSize / 2;
 
-    // Place trees along the vertical sidewalks
-    for (let i = 1; i < treesPerSide; i++) {
-      const treeZ = z - this.blockSize / 2 + i * treeSpacing;
+        // Add trees to each plot
+        for (let plotX = 0; plotX < plotsPerRow; plotX++) {
+          for (let plotZ = 0; plotZ < plotsPerColumn; plotZ++) {
+            // Calculate the position for this plot
+            const plotCenterX = startX + plotX * this.plotSize;
+            const plotCenterZ = startZ + plotZ * this.plotSize;
 
-      // Only place a tree with 70% probability for variety
-      if (Math.random() < 0.7) {
-        // Tree on the left sidewalk
-        const leftTree = this.createTree(
-          trunkGeometry,
-          trunkMaterial,
-          topGeometry,
-          topMaterial
-        );
-        leftTree.position.set(x - sidewalkOffset, 0, treeZ);
-        this.trees.add(leftTree);
-      }
+            // 60% chance to add 1-2 trees to the plot
+            if (Math.random() < 0.6) {
+              // Number of trees for this plot (1 or 2)
+              const treeCount = Math.random() < 0.3 ? 2 : 1;
 
-      if (Math.random() < 0.7) {
-        // Tree on the right sidewalk
-        const rightTree = this.createTree(
-          trunkGeometry,
-          trunkMaterial,
-          topGeometry,
-          topMaterial
-        );
-        rightTree.position.set(x + sidewalkOffset, 0, treeZ);
-        this.trees.add(rightTree);
+              for (let t = 0; t < treeCount; t++) {
+                // Create a bushy tree
+                const tree = this.createTree(
+                  trunkGeometry,
+                  trunkMaterial,
+                  topGeometry,
+                  topMaterial
+                );
+
+                // Position the tree randomly within the plot, but not too close to the edges
+                const offsetX = (Math.random() - 0.5) * (this.plotSize - 3);
+                const offsetZ = (Math.random() - 0.5) * (this.plotSize - 3);
+
+                const x = plotCenterX + offsetX;
+                const z = plotCenterZ + offsetZ;
+
+                // Get the terrain height at this position
+                const terrainHeight = this.getTerrainHeightAt(x, z);
+
+                // Position the tree
+                tree.position.set(x, terrainHeight, z);
+
+                // Add some random rotation
+                tree.rotation.y = Math.random() * Math.PI * 2;
+
+                // Add some random scaling for variety
+                const scale = 0.7 + Math.random() * 0.3;
+                tree.scale.set(scale, scale, scale);
+
+                this.trees.add(tree);
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -895,7 +941,7 @@ export class World {
   private createTree(
     trunkGeometry: THREE.CylinderGeometry,
     trunkMaterial: THREE.MeshStandardMaterial,
-    topGeometry: THREE.ConeGeometry,
+    topGeometry: THREE.ConeGeometry | THREE.SphereGeometry,
     topMaterial: THREE.MeshStandardMaterial
   ): THREE.Group {
     const tree = new THREE.Group();
@@ -911,10 +957,6 @@ export class World {
     top.receiveShadow = true;
     top.position.y = 3.5;
     tree.add(top);
-
-    // Add some random scaling for variety
-    const scale = 0.8 + Math.random() * 0.4;
-    tree.scale.set(scale, scale, scale);
 
     return tree;
   }
@@ -1003,16 +1045,11 @@ export class World {
           mailboxBoxGeometry,
           mailboxMaterial
         );
-
-        // Add some random rocks in the block
-        this.addRandomRocks(
-          blockCenterX,
-          blockCenterZ,
-          rockGeometries,
-          rockMaterial
-        );
       }
     }
+
+    // Add rocks to the forest area
+    this.addForestRocks(rockGeometries, rockMaterial);
 
     // Add some debris along roads
     this.addRoadDebris(rockGeometries, rockMaterial);
@@ -1097,16 +1134,23 @@ export class World {
     }
   }
 
-  private addRandomRocks(
-    blockCenterX: number,
-    blockCenterZ: number,
+  private addForestRocks(
     rockGeometries: THREE.DodecahedronGeometry[],
     rockMaterial: THREE.MeshStandardMaterial
   ): void {
-    // Add 1-3 random rocks per block
-    const rockCount = 1 + Math.floor(Math.random() * 3);
+    const halfWorldSize = this.worldSize / 2;
 
-    for (let i = 0; i < rockCount; i++) {
+    // Define the neighborhood boundary (slightly larger than the actual neighborhood)
+    const neighborhoodMargin = 10;
+    const neighborhoodSize =
+      Math.floor(this.worldSize / this.blockSize) * this.blockSize +
+      neighborhoodMargin;
+    const neighborhoodHalfSize = neighborhoodSize / 2;
+
+    // Number of rocks in the forest
+    const forestRockCount = 100;
+
+    for (let i = 0; i < forestRockCount; i++) {
       // Choose a random rock geometry
       const rockGeometry =
         rockGeometries[Math.floor(Math.random() * rockGeometries.length)];
@@ -1115,31 +1159,50 @@ export class World {
       rock.castShadow = true;
       rock.receiveShadow = true;
 
-      // Position the rock randomly within the block
-      const offsetX = (Math.random() - 0.5) * this.blockSize * 0.8;
-      const offsetZ = (Math.random() - 0.5) * this.blockSize * 0.8;
+      // Position the rock outside the neighborhood but within the world bounds
+      let x, z;
+      let validPosition = false;
+      let attempts = 0;
 
-      const x = blockCenterX + offsetX;
-      const z = blockCenterZ + offsetZ;
+      while (!validPosition && attempts < 10) {
+        // Generate a position within the world bounds
+        x = (Math.random() - 0.5) * this.worldSize;
+        z = (Math.random() - 0.5) * this.worldSize;
 
-      // Skip if the position is near a road
-      if (this.isNearRoad(x, z)) continue;
+        // Check if the position is outside the neighborhood
+        const isOutsideNeighborhood =
+          Math.abs(x) > neighborhoodHalfSize - 5 ||
+          Math.abs(z) > neighborhoodHalfSize - 5;
 
-      // Get the terrain height at this position
-      const terrainHeight = this.getTerrainHeightAt(x, z);
+        // Check if the position is within the world bounds
+        const isWithinWorldBounds =
+          Math.abs(x) < halfWorldSize - 2 && Math.abs(z) < halfWorldSize - 2;
 
-      rock.position.set(x, terrainHeight + 0.3, z);
+        if (isOutsideNeighborhood && isWithinWorldBounds) {
+          validPosition = true;
+        }
 
-      // Add some random rotation
-      rock.rotation.x = Math.random() * Math.PI;
-      rock.rotation.y = Math.random() * Math.PI;
-      rock.rotation.z = Math.random() * Math.PI;
+        attempts++;
+      }
 
-      // Add some random scaling
-      const scale = 0.7 + Math.random() * 0.6;
-      rock.scale.set(scale, scale, scale);
+      if (validPosition) {
+        // Get the terrain height at this position
+        const terrainHeight = this.getTerrainHeightAt(x!, z!);
 
-      this.obstacles.add(rock);
+        // Position the rock
+        rock.position.set(x!, terrainHeight + 0.3, z!);
+
+        // Add some random rotation
+        rock.rotation.x = Math.random() * Math.PI;
+        rock.rotation.y = Math.random() * Math.PI;
+        rock.rotation.z = Math.random() * Math.PI;
+
+        // Add some random scaling
+        const scale = 0.5 + Math.random() * 1.5;
+        rock.scale.set(scale, scale, scale);
+
+        this.obstacles.add(rock);
+      }
     }
   }
 
@@ -1152,13 +1215,44 @@ export class World {
     const numBlocksZ = Math.floor(this.worldSize / this.blockSize);
 
     // Add debris along roads
-    const debrisCount = 40;
+    const debrisCount = 30; // Reduced from 40 to make it less cluttered
+
+    // Create materials for different types of debris
+    const paperMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf5f5f5, // White
+      roughness: 0.9,
+      metalness: 0.1,
+    });
+
+    const canMaterial = new THREE.MeshStandardMaterial({
+      color: 0xc0c0c0, // Silver
+      roughness: 0.4,
+      metalness: 0.8,
+    });
 
     for (let i = 0; i < debrisCount; i++) {
-      // Choose a random rock geometry for debris
-      const debrisGeometry =
-        rockGeometries[Math.floor(Math.random() * rockGeometries.length)];
-      const debris = new THREE.Mesh(debrisGeometry, rockMaterial);
+      // Choose a random debris type
+      let debrisGeometry;
+      let debrisMaterial;
+
+      const debrisType = Math.floor(Math.random() * 3);
+      switch (debrisType) {
+        case 0: // Small rock
+          debrisGeometry =
+            rockGeometries[Math.floor(Math.random() * rockGeometries.length)];
+          debrisMaterial = rockMaterial;
+          break;
+        case 1: // Paper/trash
+          debrisGeometry = new THREE.PlaneGeometry(0.3, 0.3);
+          debrisMaterial = paperMaterial;
+          break;
+        case 2: // Can
+          debrisGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.2, 8);
+          debrisMaterial = canMaterial;
+          break;
+      }
+
+      const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
 
       debris.castShadow = true;
       debris.receiveShadow = true;
@@ -1188,7 +1282,7 @@ export class World {
       // Get the terrain height at this position
       const terrainHeight = this.getTerrainHeightAt(x, z);
 
-      debris.position.set(x, terrainHeight + 0.1, z);
+      debris.position.set(x, terrainHeight + 0.05, z);
 
       // Add some random rotation
       debris.rotation.x = Math.random() * Math.PI;
@@ -1196,7 +1290,7 @@ export class World {
       debris.rotation.z = Math.random() * Math.PI;
 
       // Make debris smaller
-      const scale = 0.2 + Math.random() * 0.3;
+      const scale = 0.2 + Math.random() * 0.2;
       debris.scale.set(scale, scale, scale);
 
       this.obstacles.add(debris);
