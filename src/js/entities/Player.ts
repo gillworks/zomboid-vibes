@@ -444,6 +444,14 @@ export class Player {
     return this.equippedItem;
   }
 
+  public getTimeSinceLastAttack(): number {
+    return this.timeSinceLastAttack;
+  }
+
+  public getAttackCooldown(): number {
+    return this.attackCooldown;
+  }
+
   public reset(): void {
     // Reset player state
     this.health = 100;

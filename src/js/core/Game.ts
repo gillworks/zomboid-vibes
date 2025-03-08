@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import Stats from "stats.js";
 import * as TWEEN from "@tweenjs/tween.js";
 
 import { Player } from "../entities/Player";
@@ -13,7 +12,6 @@ export class Game {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private stats: Stats;
   private clock: THREE.Clock;
 
   private world: World;
@@ -54,11 +52,6 @@ export class Game {
     document
       .getElementById("game-container")
       ?.appendChild(this.renderer.domElement);
-
-    // Create the stats
-    this.stats = new Stats();
-    this.stats.showPanel(0);
-    document.body.appendChild(this.stats.dom);
 
     // Create the clock
     this.clock = new THREE.Clock();
@@ -190,8 +183,6 @@ export class Game {
 
     if (this.isLoading) return;
 
-    this.stats.begin();
-
     const delta = this.clock.getDelta();
 
     // Update TWEEN
@@ -213,8 +204,6 @@ export class Game {
 
     // Render the scene
     this.renderer.render(this.scene, this.camera);
-
-    this.stats.end();
   }
 
   private gameOver(): void {
