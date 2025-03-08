@@ -1,11 +1,15 @@
 import { Player } from "../entities/Player";
+import { LightingSystem } from "../core/LightingSystem";
 
 export class UIManager {
   private player: Player;
+  private lightingSystem: LightingSystem | null = null;
 
   private healthBar: HTMLElement | null;
   private hungerBar: HTMLElement | null;
   private thirstBar: HTMLElement | null;
+  private timeText: HTMLElement | null;
+  private timeIcon: HTMLElement | null;
 
   constructor(player: Player) {
     this.player = player;
@@ -14,12 +18,52 @@ export class UIManager {
     this.healthBar = document.getElementById("health-bar");
     this.hungerBar = document.getElementById("hunger-bar");
     this.thirstBar = document.getElementById("thirst-bar");
+    this.timeText = document.getElementById("time-text");
+    this.timeIcon = document.querySelector(".time-icon");
+  }
+
+  public setLightingSystem(lightingSystem: LightingSystem): void {
+    this.lightingSystem = lightingSystem;
   }
 
   public update(): void {
     this.updateHealthBar();
     this.updateHungerBar();
     this.updateThirstBar();
+    this.updateTimeDisplay();
+  }
+
+  private updateTimeDisplay(): void {
+    if (this.timeText && this.timeIcon && this.lightingSystem) {
+      const timeOfDay = this.lightingSystem.getTimeOfDay();
+
+      // Convert time of day (0-1) to hours and minutes
+      const totalMinutes = Math.floor(timeOfDay * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
+      // Format time as 12-hour clock with AM/PM
+      const period = hours >= 12 ? "PM" : "AM";
+      const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+      const displayMinutes = minutes.toString().padStart(2, "0");
+
+      this.timeText.textContent = `${displayHours}:${displayMinutes} ${period}`;
+
+      // Update the time icon to reflect day/night
+      // Rotate the gradient based on time of day
+      const rotation = timeOfDay * 360;
+      this.timeIcon.style.background = `linear-gradient(${rotation}deg, #ffdb58 0%, #ffdb58 50%, #0a0a20 50%, #0a0a20 100%)`;
+
+      // Add a glow effect during dawn and dusk
+      if (
+        (timeOfDay > 0.2 && timeOfDay < 0.3) ||
+        (timeOfDay > 0.7 && timeOfDay < 0.8)
+      ) {
+        this.timeIcon.style.boxShadow = "0 0 10px rgba(255, 215, 0, 0.8)";
+      } else {
+        this.timeIcon.style.boxShadow = "0 0 5px rgba(255, 255, 255, 0.5)";
+      }
+    }
   }
 
   private updateHealthBar(): void {

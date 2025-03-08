@@ -7,6 +7,7 @@ import { InputManager } from "./InputManager";
 import { UIManager } from "../ui/UIManager";
 import { ZombieManager } from "../entities/ZombieManager";
 import { ItemManager } from "../entities/ItemManager";
+import { LightingSystem } from "./LightingSystem";
 
 export class Game {
   private scene: THREE.Scene;
@@ -20,6 +21,7 @@ export class Game {
   private uiManager!: UIManager;
   private zombieManager!: ZombieManager;
   private itemManager!: ItemManager;
+  private lightingSystem!: LightingSystem;
 
   private isGameOver: boolean = false;
   private isLoading: boolean = true;
@@ -43,12 +45,27 @@ export class Game {
     this.camera.position.set(20, 20, 20); // Original camera position
     this.camera.lookAt(0, 0, 0);
 
-    // Create the renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Create the renderer with enhanced settings for realistic lighting
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance",
+      stencil: false,
+      depth: true,
+    });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
+
+    // Enhanced shadow settings
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+
+    // Set color output format
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace; // Better color representation
+
+    // Set tone mapping for HDR-like effects
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping; // Cinematic tone mapping
+    this.renderer.toneMappingExposure = 1.0; // Exposure level
+
     document
       .getElementById("game-container")
       ?.appendChild(this.renderer.domElement);
@@ -65,53 +82,63 @@ export class Game {
   }
 
   private setupLoadingManager(): void {
-    const progressBar = document.getElementById("progress-bar");
-    const loadingText = document.getElementById("loading-text");
+    this.loadingManager = new THREE.LoadingManager();
 
-    this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-      const progress = (itemsLoaded / itemsTotal) * 100;
-      if (progressBar) {
-        progressBar.style.width = `${progress}%`;
-      }
-      if (loadingText) {
-        loadingText.textContent = `Loading... ${Math.round(progress)}%`;
+    // Set up loading events
+    this.loadingManager.onLoad = () => {
+      console.log("Loading complete!");
+      this.isLoading = false;
+
+      // Hide loading screen with a fade out
+      const loadingScreen = document.getElementById("loading-screen");
+      if (loadingScreen) {
+        loadingScreen.classList.add("fade-out");
+        setTimeout(() => {
+          loadingScreen.style.display = "none";
+        }, 500);
       }
     };
 
-    this.loadingManager.onLoad = () => {
-      setTimeout(() => {
-        this.isLoading = false;
-        const loadingScreen = document.getElementById("loading-screen");
-        if (loadingScreen) {
-          loadingScreen.style.opacity = "0";
-          setTimeout(() => {
-            loadingScreen.style.display = "none";
-          }, 500);
-        }
-      }, 1000);
+    this.loadingManager.onProgress = (_url, itemsLoaded, itemsTotal) => {
+      console.log(`Loading: ${itemsLoaded}/${itemsTotal}`);
+
+      // Update progress bar
+      const progressBar = document.getElementById("progress-bar");
+      if (progressBar) {
+        const percent = (itemsLoaded / itemsTotal) * 100;
+        progressBar.style.width = `${percent}%`;
+      }
+
+      // Update loading text
+      const loadingText = document.getElementById("loading-text");
+      if (loadingText) {
+        loadingText.textContent = `Loading... ${Math.round(
+          (itemsLoaded / itemsTotal) * 100
+        )}%`;
+      }
+    };
+
+    this.loadingManager.onError = (url) => {
+      console.error(`Error loading ${url}`);
     };
   }
 
   public init(): void {
-    // Create the world
+    // Setup loading manager
+    this.setupLoadingManager();
+
+    // Create the clock
+    this.clock = new THREE.Clock();
+
+    // Initialize the world
     this.world = new World(this.scene, this.loadingManager);
     this.world.init();
 
-    // Create the player
+    // Initialize the player
     this.player = new Player(this.scene, this.camera, this.loadingManager);
-
-    // Position the player at a road intersection in the neighborhood
-    // The roads are positioned at multiples of blockSize (30)
-    // So we'll place the player at the first intersection (0, 0)
-    this.player.getPlayerGroup().position.set(0, 0, 0);
-
-    // Set the world reference for collision detection
     this.player.setWorld(this.world);
 
-    // Create the input manager
-    this.inputManager = new InputManager(this.player);
-
-    // Create the zombie manager
+    // Initialize the zombie manager
     this.zombieManager = new ZombieManager(
       this.scene,
       this.player,
@@ -119,10 +146,7 @@ export class Game {
       this.loadingManager
     );
 
-    // Connect zombie manager to input manager
-    this.inputManager.setZombieManager(this.zombieManager);
-
-    // Create the item manager
+    // Initialize the item manager
     this.itemManager = new ItemManager(
       this.scene,
       this.player,
@@ -130,66 +154,29 @@ export class Game {
       this.loadingManager
     );
 
-    // Create the UI manager
-    this.uiManager = new UIManager(this.player);
+    // Initialize the lighting system
+    this.lightingSystem = new LightingSystem(this.scene, this.world);
+    this.lightingSystem.createStreetLamps();
 
-    // Set up lights
-    this.setupLights();
+    // Initialize the input manager
+    this.inputManager = new InputManager(this.player);
+    this.inputManager.setZombieManager(this.zombieManager);
+    this.inputManager.setLightingSystem(this.lightingSystem);
+
+    // Initialize the UI manager and connect it to the lighting system
+    this.uiManager = new UIManager(this.player);
+    this.uiManager.setLightingSystem(this.lightingSystem);
 
     // Start the animation loop
     this.animate();
 
-    // Manually trigger the loading completion since we're not loading external assets
+    // Manually trigger loading completion since we're not loading external assets
     setTimeout(() => {
-      // Simulate loading progress
-      const progressBar = document.getElementById("progress-bar");
-      if (progressBar) {
-        progressBar.style.width = "100%";
-      }
-
-      const loadingText = document.getElementById("loading-text");
-      if (loadingText) {
-        loadingText.textContent = "Loading... 100%";
-      }
-
-      // Trigger the onLoad callback
-      if (this.loadingManager.onLoad) {
+      if (this.isLoading && this.loadingManager.onLoad) {
+        console.log("Manually triggering loading completion");
         this.loadingManager.onLoad();
       }
     }, 1000);
-  }
-
-  private setupLights(): void {
-    // Ambient light - increase intensity to better illuminate the forest
-    const ambientLight = new THREE.AmbientLight(0x404040, 1.2);
-    this.scene.add(ambientLight);
-
-    // Directional light (sun)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    directionalLight.position.set(100, 100, 50);
-    directionalLight.castShadow = true;
-
-    // Configure shadow properties
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = 500;
-    directionalLight.shadow.camera.left = -100;
-    directionalLight.shadow.camera.right = 100;
-    directionalLight.shadow.camera.top = 100;
-    directionalLight.shadow.camera.bottom = -100;
-
-    this.scene.add(directionalLight);
-
-    // Add a second directional light from a different angle to reduce shadows
-    const secondaryLight = new THREE.DirectionalLight(0xffffcc, 0.8);
-    secondaryLight.position.set(-50, 80, -50);
-    secondaryLight.castShadow = false;
-    this.scene.add(secondaryLight);
-
-    // Add a hemisphere light with stronger ground color for the forest
-    const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x4caf50, 1.0);
-    this.scene.add(hemisphereLight);
   }
 
   private animate(): void {
@@ -209,6 +196,9 @@ export class Game {
       this.itemManager.update(delta);
       this.world.update(delta);
       this.uiManager.update();
+
+      // Update lighting system
+      this.lightingSystem.update(delta);
 
       // Check for game over condition
       if (this.player.getHealth() <= 0) {

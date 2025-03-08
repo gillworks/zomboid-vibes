@@ -13,7 +13,8 @@ Zomboid Vibes is a browser-based survival horror game inspired by Project Zomboi
 - Health and hunger mechanics
 - Item collection and inventory management
 - Procedurally generated terrain
-- Day/night cycle (coming soon)
+- Realistic day/night cycle with dynamic lighting
+- Street lamps that automatically turn on at night
 - Building interiors (coming soon)
 
 ## Getting Started
@@ -48,12 +49,45 @@ npm run dev
 
 ## How to Play
 
+### Basic Controls
+
 - **WASD**: Move the player
 - **Mouse**: Look around
+- **Left Click**: Attack zombies
 - **I**: Open/close inventory
 - **E**: Interact with objects (coming soon)
-- **Left Click**: Attack (coming soon)
-- **Right Click**: Use equipped item (coming soon)
+
+### Time Controls
+
+- **Click on the clock**: Show/hide time controls help panel
+- The following controls only work when the help panel is open:
+  - **T**: Speed up time (10x)
+  - **Y**: Normal time speed
+  - **U**: Set time to dawn
+  - **I**: Set time to noon
+  - **O**: Set time to dusk
+  - **P**: Set time to midnight
+
+## Features
+
+### Dynamic Lighting System
+
+The game features a realistic lighting system that simulates the day/night cycle:
+
+- Smooth transitions between different times of day
+- Dynamic sky colors that change from deep blue night to bright blue day
+- Atmospheric fog that adjusts based on time of day
+- Directional sunlight that moves across the sky
+- Strategically placed street lamps that automatically turn on at dusk and off at dawn
+- Performance-optimized shadows for an immersive experience without sacrificing framerate
+
+### Time Display
+
+A clock in the top-right corner shows the current in-game time:
+
+- Visual indicator showing sun/moon position
+- 12-hour time format with AM/PM
+- Special visual effects during dawn and dusk
 
 ## Building for Production
 

@@ -1,10 +1,12 @@
 import { Player } from "../entities/Player";
 import * as THREE from "three";
 import { ZombieManager } from "../entities/ZombieManager";
+import { LightingSystem } from "./LightingSystem";
 
 export class InputManager {
   private player: Player;
   private zombieManager?: ZombieManager;
+  private lightingSystem?: LightingSystem;
   private keys: { [key: string]: boolean } = {};
 
   // Define isometric directions
@@ -34,15 +36,73 @@ export class InputManager {
     this.zombieManager = zombieManager;
   }
 
+  public setLightingSystem(lightingSystem: LightingSystem): void {
+    this.lightingSystem = lightingSystem;
+  }
+
   private onKeyDown(event: KeyboardEvent): void {
     this.keys[event.key.toLowerCase()] = true;
+
+    // Handle time control keys only when the help panel is open
+    if (this.lightingSystem) {
+      const timeControlsHelp = document.getElementById("time-controls-help");
+      const isHelpPanelOpen =
+        timeControlsHelp && !timeControlsHelp.classList.contains("hidden");
+
+      // Only process time control keys if the help panel is open
+      if (isHelpPanelOpen) {
+        switch (event.key.toLowerCase()) {
+          case "t": // Speed up time
+            this.lightingSystem.setDaySpeed(10); // 10x speed
+            console.log("Time speed: 10x");
+            this.showTimeControlFeedback("Time speed: 10x");
+            break;
+          case "y": // Slow down time
+            this.lightingSystem.setDaySpeed(1); // Normal speed
+            console.log("Time speed: 1x");
+            this.showTimeControlFeedback("Time speed: 1x");
+            break;
+          case "u": // Set to dawn
+            this.lightingSystem.setTimeOfDay(0.25);
+            console.log("Time set to dawn");
+            this.showTimeControlFeedback("Time set to dawn");
+            break;
+          case "i":
+            // Only set to noon if help panel is open, otherwise toggle inventory
+            this.lightingSystem.setTimeOfDay(0.5);
+            console.log("Time set to noon");
+            this.showTimeControlFeedback("Time set to noon");
+            // Prevent the inventory from toggling when using the time control
+            event.preventDefault();
+            return;
+          case "o": // Set to dusk
+            this.lightingSystem.setTimeOfDay(0.75);
+            console.log("Time set to dusk");
+            this.showTimeControlFeedback("Time set to dusk");
+            break;
+          case "p": // Set to midnight
+            this.lightingSystem.setTimeOfDay(0);
+            console.log("Time set to midnight");
+            this.showTimeControlFeedback("Time set to midnight");
+            break;
+        }
+      }
+    }
 
     // Handle player movement
     this.handlePlayerMovement();
 
     // Handle inventory
     if (event.key.toLowerCase() === "i") {
-      this.toggleInventory();
+      // Check if the help panel is open
+      const timeControlsHelp = document.getElementById("time-controls-help");
+      const isHelpPanelOpen =
+        timeControlsHelp && !timeControlsHelp.classList.contains("hidden");
+
+      // Only toggle inventory if the help panel is not open
+      if (!isHelpPanelOpen) {
+        this.toggleInventory();
+      }
     }
 
     // Space key can still be used as an alternative attack method
@@ -199,21 +259,33 @@ export class InputManager {
   private setupUIListeners(): void {
     // Inventory button
     const inventoryButton = document.getElementById("inventory-button");
-    if (inventoryButton) {
-      inventoryButton.addEventListener(
-        "click",
-        this.toggleInventory.bind(this)
-      );
+    const inventoryPanel = document.getElementById("inventory-panel");
+    const closeInventoryButton = document.getElementById("close-inventory");
+
+    if (inventoryButton && inventoryPanel && closeInventoryButton) {
+      inventoryButton.addEventListener("click", () => {
+        inventoryPanel.classList.remove("hidden");
+        this.populateInventory();
+      });
+
+      closeInventoryButton.addEventListener("click", () => {
+        inventoryPanel.classList.add("hidden");
+      });
     }
 
-    // Close inventory button
-    const closeInventoryButton = document.getElementById("close-inventory");
-    if (closeInventoryButton) {
-      closeInventoryButton.addEventListener("click", () => {
-        const inventoryPanel = document.getElementById("inventory-panel");
-        if (inventoryPanel) {
-          inventoryPanel.classList.add("hidden");
-        }
+    // Time display help
+    const timeDisplay = document.getElementById("time-display");
+    const timeControlsHelp = document.getElementById("time-controls-help");
+    const helpCloseButton = document.querySelector(".help-close");
+
+    if (timeDisplay && timeControlsHelp && helpCloseButton) {
+      timeDisplay.addEventListener("click", () => {
+        timeControlsHelp.classList.toggle("hidden");
+      });
+
+      helpCloseButton.addEventListener("click", (e) => {
+        e.stopPropagation();
+        timeControlsHelp.classList.add("hidden");
       });
     }
 
@@ -227,5 +299,26 @@ export class InputManager {
         }
       });
     }
+  }
+
+  // Add a method to show feedback when time controls are used
+  private showTimeControlFeedback(message: string): void {
+    // Create or get the feedback element
+    let feedbackElement = document.getElementById("time-control-feedback");
+
+    if (!feedbackElement) {
+      feedbackElement = document.createElement("div");
+      feedbackElement.id = "time-control-feedback";
+      document.body.appendChild(feedbackElement);
+    }
+
+    // Set the message and show the feedback
+    feedbackElement.textContent = message;
+    feedbackElement.classList.add("active");
+
+    // Hide the feedback after a short delay
+    setTimeout(() => {
+      feedbackElement.classList.remove("active");
+    }, 1500);
   }
 }
