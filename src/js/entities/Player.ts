@@ -37,18 +37,21 @@ export class Player {
   private animationTime: number = 0;
   private walkingSpeed: number = 5; // Animation speed multiplier
 
-  private attackRange: number = 4;
+  private attackRange: number = 2;
   private attackDamage: number = 25;
-  private attackCooldown: number = 0.5; // seconds
+  private attackCooldown: number = 0.2; // seconds
   private timeSinceLastAttack: number = 0;
   private isAttacking: boolean = false;
-  private knockbackForce: number = 3; // Force of knockback effect
+  private knockbackForce: number = 2; // Force of knockback effect
 
   // Track cause of death
   private causeOfDeath: string = "";
 
   // Collision properties
   private collisionRadius: number = 0.5;
+
+  // New member variable for attack animation timeout
+  private _attackAnimationTimeout: number | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -585,11 +588,7 @@ export class Player {
       return;
     }
 
-    if (this.isAttacking) {
-      console.log("Already attacking");
-      return;
-    }
-
+    // Remove the check for isAttacking to allow attack animation to always play
     console.log("Attack initiated");
 
     // Reset cooldown
@@ -674,6 +673,11 @@ export class Player {
   private animateAttack(): void {
     console.log("Starting attack animation");
 
+    // Clear any existing animation timeouts to prevent conflicts
+    if (this._attackAnimationTimeout) {
+      clearTimeout(this._attackAnimationTimeout);
+    }
+
     // Store original arm rotations
     const leftArmOriginalRotation = this.leftArm.rotation.clone();
     const rightArmOriginalRotation = this.rightArm.rotation.clone();
@@ -695,7 +699,7 @@ export class Player {
     console.log("Arms rotated for attack");
 
     // Use setTimeout to return the arms to their original position after a delay
-    setTimeout(() => {
+    this._attackAnimationTimeout = setTimeout(() => {
       // Return arms to original position
       this.leftArm.rotation.x = leftArmOriginalRotation.x;
       this.rightArm.rotation.x = rightArmOriginalRotation.x;
@@ -711,7 +715,8 @@ export class Player {
   }
 
   public canAttack(): boolean {
-    return this.timeSinceLastAttack >= this.attackCooldown && !this.isAttacking;
+    // Remove the isAttacking check to allow attacking even during animation
+    return this.timeSinceLastAttack >= this.attackCooldown;
   }
 
   public drink(amount: number): void {
