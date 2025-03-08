@@ -200,8 +200,8 @@ export class Player {
     // Rotate the entire character group to face forward (negative Z direction)
     characterGroup.rotation.y = Math.PI;
 
-    // Adjust the overall scale
-    this.playerGroup.scale.set(0.8, 0.8, 0.8);
+    // Increase the overall scale to make the character larger and comparable to zombies
+    this.playerGroup.scale.set(1.2, 1.2, 1.2);
   }
 
   public update(delta: number): void {
@@ -282,7 +282,8 @@ export class Player {
 
   private updateCameraPosition(): void {
     // Update camera to follow player but maintain isometric angle
-    const offset = new THREE.Vector3(20, 20, 20);
+    // Slightly increase camera distance for the larger character
+    const offset = new THREE.Vector3(22, 22, 22);
     this.camera.position.copy(this.playerGroup.position).add(offset);
     this.camera.lookAt(this.playerGroup.position);
   }
