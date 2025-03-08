@@ -22,6 +22,9 @@ export class InputManager {
     window.addEventListener("keydown", this.onKeyDown.bind(this));
     window.addEventListener("keyup", this.onKeyUp.bind(this));
 
+    // Set up mouse event listeners for attacks
+    window.addEventListener("mousedown", this.onMouseDown.bind(this));
+
     // Set up UI event listeners
     this.setupUIListeners();
   }
@@ -42,7 +45,7 @@ export class InputManager {
       this.toggleInventory();
     }
 
-    // Handle attack with space key
+    // Space key can still be used as an alternative attack method
     if (event.key === " " || event.key === "space") {
       this.handlePlayerAttack();
     }
@@ -60,12 +63,24 @@ export class InputManager {
     }
   }
 
+  private onMouseDown(event: MouseEvent): void {
+    // Left mouse button (button 0) for attack
+    if (event.button === 0) {
+      console.log("Left mouse click detected - attacking");
+      this.handlePlayerAttack();
+    }
+  }
+
   private handlePlayerAttack(): void {
     // Make sure we have a zombie manager
-    if (!this.zombieManager) return;
+    if (!this.zombieManager) {
+      console.log("No zombie manager available");
+      return;
+    }
 
     // Get zombies and attack
     const zombies = this.zombieManager.getZombies();
+    console.log("Attacking zombies, count:", zombies.length);
     this.player.attack(zombies);
   }
 

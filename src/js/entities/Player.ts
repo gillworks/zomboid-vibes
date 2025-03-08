@@ -34,7 +34,7 @@ export class Player {
   private animationTime: number = 0;
   private walkingSpeed: number = 5; // Animation speed multiplier
 
-  private attackRange: number = 2;
+  private attackRange: number = 4;
   private attackDamage: number = 25;
   private attackCooldown: number = 0.5; // seconds
   private timeSinceLastAttack: number = 0;
@@ -499,8 +499,11 @@ export class Player {
   public attack(zombies: Zombie[]): void {
     // Check if we can attack
     if (this.timeSinceLastAttack < this.attackCooldown || this.isAttacking) {
+      console.log("Attack on cooldown or already attacking");
       return;
     }
+
+    console.log("Attack initiated");
 
     // Reset cooldown
     this.timeSinceLastAttack = 0;
@@ -514,12 +517,20 @@ export class Player {
     const playerForward = new THREE.Vector3(0, 0, -1);
     playerForward.applyEuler(this.playerGroup.rotation);
 
+    console.log("Player position:", playerPos);
+    console.log("Player forward:", playerForward);
+    console.log("Number of zombies:", zombies.length);
+
     // Check for zombies in range
+    let hitZombie = false;
     for (const zombie of zombies) {
       if (zombie.isDead()) continue;
 
       const zombiePos = zombie.getPosition();
       const distanceToZombie = playerPos.distanceTo(zombiePos);
+
+      console.log("Zombie position:", zombiePos);
+      console.log("Distance to zombie:", distanceToZombie);
 
       // Check if zombie is within attack range
       if (distanceToZombie <= this.attackRange) {
@@ -530,12 +541,22 @@ export class Player {
 
         const angleToZombie = playerForward.angleTo(directionToZombie);
 
-        // Check if zombie is in front of the player (within a 120-degree arc)
-        if (angleToZombie <= Math.PI / 3) {
+        console.log("Direction to zombie:", directionToZombie);
+        console.log("Angle to zombie:", angleToZombie);
+        console.log("Attack angle threshold:", Math.PI / 2);
+
+        // Check if zombie is in front of the player (within a 180-degree arc)
+        if (angleToZombie <= Math.PI / 2) {
           // Deal damage to zombie
           zombie.takeDamage(this.attackDamage);
+          console.log("Hit zombie! Damage dealt:", this.attackDamage);
+          hitZombie = true;
         }
       }
+    }
+
+    if (!hitZombie) {
+      console.log("No zombies hit");
     }
   }
 
