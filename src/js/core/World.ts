@@ -417,12 +417,12 @@ export class World {
     const context = canvas.getContext("2d");
 
     if (context) {
-      // Fill with base grass color (darker than neighborhood grass)
-      context.fillStyle = "#4caf50"; // Darker green for forest
+      // Fill with base grass color (brighter to ensure visibility)
+      context.fillStyle = "#66bb6a"; // Brighter green for better visibility
       context.fillRect(0, 0, canvas.width, canvas.height);
 
       // Add subtle grass texture pattern
-      context.fillStyle = "#43a047"; // Even darker green for texture
+      context.fillStyle = "#4caf50"; // Slightly darker green for texture
 
       // Create random grass blades and some forest floor details
       for (let i = 0; i < 5000; i++) {
@@ -435,7 +435,7 @@ export class World {
       }
 
       // Add some random darker patches to simulate forest floor variation
-      context.fillStyle = "#388e3c";
+      context.fillStyle = "#43a047"; // Not too dark to ensure visibility
       for (let i = 0; i < 100; i++) {
         const patchSize = 10 + Math.random() * 30;
         const x = Math.random() * canvas.width;
@@ -457,16 +457,23 @@ export class World {
     // Create forest material with the texture
     const forestMaterial = new THREE.MeshStandardMaterial({
       map: forestTexture,
-      color: 0x4caf50, // Base green color
-      roughness: 0.9,
-      metalness: 0.1,
-      flatShading: true,
+      color: 0x7cb342, // Even brighter green color for better visibility
+      roughness: 0.7, // Less roughness for better light reflection
+      metalness: 0.0, // No metalness for natural look
+      flatShading: false, // Disable flat shading for smoother appearance
+      emissive: 0x2e7d32, // Add slight emissive property to ensure visibility
+      emissiveIntensity: 0.2, // Low intensity to not make it look like it's glowing
     });
 
     const forestTerrain = new THREE.Mesh(forestGeometry, forestMaterial);
     forestTerrain.rotation.x = -Math.PI / 2;
     forestTerrain.receiveShadow = true;
-    forestTerrain.position.set(x, 0, z);
+
+    // Ensure the forest terrain is slightly above the void (0.01 units)
+    // This helps prevent z-fighting with any potential underlying plane
+    forestTerrain.position.set(x, -0.01, z);
+
+    // Add to scene
     this.scene.add(forestTerrain);
   }
 

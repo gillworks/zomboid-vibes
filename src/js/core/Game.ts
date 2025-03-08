@@ -28,8 +28,8 @@ export class Game {
   constructor() {
     // Create the scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x111111);
-    this.scene.fog = new THREE.FogExp2(0x333333, 0.01);
+    this.scene.background = new THREE.Color(0x87ceeb); // Light blue sky color
+    this.scene.fog = new THREE.FogExp2(0x9dc183, 0.005); // Lighter fog color and reduced density
 
     // Create the camera with isometric perspective
     this.camera = new THREE.PerspectiveCamera(
@@ -161,11 +161,11 @@ export class Game {
 
   private setupLights(): void {
     // Ambient light - increase intensity to better illuminate the forest
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.7);
+    const ambientLight = new THREE.AmbientLight(0x404040, 1.2);
     this.scene.add(ambientLight);
 
     // Directional light (sun)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
     directionalLight.position.set(100, 100, 50);
     directionalLight.castShadow = true;
 
@@ -181,8 +181,14 @@ export class Game {
 
     this.scene.add(directionalLight);
 
+    // Add a second directional light from a different angle to reduce shadows
+    const secondaryLight = new THREE.DirectionalLight(0xffffcc, 0.8);
+    secondaryLight.position.set(-50, 80, -50);
+    secondaryLight.castShadow = false;
+    this.scene.add(secondaryLight);
+
     // Add a hemisphere light with stronger ground color for the forest
-    const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x4caf50, 0.6);
+    const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x4caf50, 1.0);
     this.scene.add(hemisphereLight);
   }
 
