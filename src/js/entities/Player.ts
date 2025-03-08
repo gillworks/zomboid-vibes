@@ -42,6 +42,9 @@ export class Player {
   private isAttacking: boolean = false;
   private knockbackForce: number = 3; // Force of knockback effect
 
+  // Track cause of death
+  private causeOfDeath: string = "";
+
   constructor(
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
@@ -289,7 +292,7 @@ export class Player {
     if (this.hunger < 0) {
       this.hunger = 0;
       // Start taking damage when starving
-      this.takeDamage(0.05);
+      this.takeDamage(0.05, "starvation");
     }
 
     // Decrease thirst over time (slightly faster than hunger)
@@ -297,7 +300,7 @@ export class Player {
     if (this.thirst < 0) {
       this.thirst = 0;
       // Start taking damage when dehydrated
-      this.takeDamage(0.07); // Dehydration is more dangerous than hunger
+      this.takeDamage(0.07, "dehydration"); // Dehydration is more dangerous than hunger
     }
   }
 
@@ -361,10 +364,14 @@ export class Player {
     this.camera.lookAt(this.playerGroup.position);
   }
 
-  public takeDamage(amount: number): void {
+  public takeDamage(amount: number, cause: string = "unknown"): void {
     this.health -= amount;
-    if (this.health < 0) {
+    if (this.health <= 0) {
       this.health = 0;
+      // Set cause of death if health reaches 0
+      if (this.causeOfDeath === "") {
+        this.causeOfDeath = cause;
+      }
     }
 
     // Visual feedback for taking damage
@@ -465,6 +472,10 @@ export class Player {
     return this.attackCooldown;
   }
 
+  public getCauseOfDeath(): string {
+    return this.causeOfDeath;
+  }
+
   public reset(): void {
     // Reset player state
     this.health = 100;
@@ -474,6 +485,7 @@ export class Player {
     this.equippedItem = null;
     this.timeSinceLastAttack = 0;
     this.isAttacking = false;
+    this.causeOfDeath = ""; // Reset cause of death
 
     // Reset position
     this.playerGroup.position.set(0, 0, 0);

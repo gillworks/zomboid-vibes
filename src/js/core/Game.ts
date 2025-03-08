@@ -213,6 +213,30 @@ export class Game {
       gameOverScreen.classList.remove("hidden");
     }
 
+    // Update the cause of death message
+    const deathCauseElement = document.getElementById("death-cause");
+    if (deathCauseElement) {
+      let causeOfDeath = this.player.getCauseOfDeath();
+
+      // Format the cause of death message
+      let causeMessage = "Cause of death: ";
+      switch (causeOfDeath) {
+        case "zombie attack":
+          causeMessage += "Eaten by zombies";
+          break;
+        case "starvation":
+          causeMessage += "Starvation";
+          break;
+        case "dehydration":
+          causeMessage += "Dehydration";
+          break;
+        default:
+          causeMessage += "Unknown";
+      }
+
+      deathCauseElement.textContent = causeMessage;
+    }
+
     const restartButton = document.getElementById("restart-button");
     if (restartButton) {
       restartButton.addEventListener("click", this.restart.bind(this));

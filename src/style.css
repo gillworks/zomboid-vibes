@@ -222,7 +222,14 @@ html {
 #game-over h2 {
   font-size: 4rem;
   color: #8b0000;
+  margin-bottom: 1rem;
+}
+
+#death-cause {
+  font-size: 1.5rem;
+  color: #ff6666;
   margin-bottom: 2rem;
+  text-align: center;
 }
 
 #restart-button {

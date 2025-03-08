@@ -278,7 +278,7 @@ export class Zombie {
     this.timeSinceLastAttack = 0;
 
     // Deal damage to player
-    this.player.takeDamage(this.attackDamage);
+    this.player.takeDamage(this.attackDamage, "zombie attack");
 
     // Visual feedback for attack
     this.animateAttack();
