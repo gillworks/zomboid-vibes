@@ -10,6 +10,14 @@ export class Zombie {
   private zombieBody!: THREE.Mesh;
   private zombieHead!: THREE.Mesh;
 
+  private leftLeg!: THREE.Group;
+  private rightLeg!: THREE.Group;
+  private leftFoot!: THREE.Mesh;
+  private rightFoot!: THREE.Mesh;
+
+  private animationTime: number = 0;
+  private walkingSpeed: number = 3;
+
   private health: number = 100;
   private moveSpeed: number = 2;
   private attackRange: number = 1.5;
@@ -161,21 +169,32 @@ export class Zombie {
       metalness: 0.2,
     });
 
+    // Create leg groups to allow for better positioning and parenting
     // Left leg
-    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-0.2, 0.35, 0);
+    const leftLegGroup = new THREE.Group();
+    leftLegGroup.position.set(-0.2, 0.35, 0);
     // Slight angle for shambling gait
-    leftLeg.rotation.x = 0.1;
-    leftLeg.castShadow = true;
-    characterGroup.add(leftLeg);
+    leftLegGroup.rotation.x = 0.1;
+    characterGroup.add(leftLegGroup);
+
+    const leftLegMesh = new THREE.Mesh(legGeometry, legMaterial);
+    leftLegMesh.position.set(0, 0, 0); // Position relative to leg group
+    leftLegMesh.castShadow = true;
+    leftLegGroup.add(leftLegMesh);
+    this.leftLeg = leftLegGroup; // Store reference to the group
 
     // Right leg
-    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-    rightLeg.position.set(0.2, 0.35, 0);
+    const rightLegGroup = new THREE.Group();
+    rightLegGroup.position.set(0.2, 0.35, 0);
     // Slight angle for shambling gait
-    rightLeg.rotation.x = -0.1;
-    rightLeg.castShadow = true;
-    characterGroup.add(rightLeg);
+    rightLegGroup.rotation.x = -0.1;
+    characterGroup.add(rightLegGroup);
+
+    const rightLegMesh = new THREE.Mesh(legGeometry, legMaterial);
+    rightLegMesh.position.set(0, 0, 0); // Position relative to leg group
+    rightLegMesh.castShadow = true;
+    rightLegGroup.add(rightLegMesh);
+    this.rightLeg = rightLegGroup; // Store reference to the group
 
     // Feet
     const footGeometry = new THREE.BoxGeometry(0.25, 0.1, 0.35);
@@ -185,17 +204,19 @@ export class Zombie {
       metalness: 0.3,
     });
 
-    // Left foot
+    // Left foot - attach to left leg group
     const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
-    leftFoot.position.set(-0.2, 0.05, 0.05);
+    leftFoot.position.set(0, -0.4, 0.05); // Position at the end of the leg
     leftFoot.castShadow = true;
-    characterGroup.add(leftFoot);
+    leftLegGroup.add(leftFoot); // Add to leg group instead of character group
+    this.leftFoot = leftFoot;
 
-    // Right foot
+    // Right foot - attach to right leg group
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
-    rightFoot.position.set(0.2, 0.05, 0.05);
+    rightFoot.position.set(0, -0.4, 0.05); // Position at the end of the leg
     rightFoot.castShadow = true;
-    characterGroup.add(rightFoot);
+    rightLegGroup.add(rightFoot); // Add to leg group instead of character group
+    this.rightFoot = rightFoot;
 
     // Add the character group to the zombie group
     this.zombieGroup.add(characterGroup);
@@ -238,10 +259,14 @@ export class Zombie {
     // If within attack range, attack player
     if (distance <= this.attackRange) {
       this.attackPlayer();
+      this.resetLimbPositions();
     } else {
       // Move towards player
       const moveAmount = this.moveSpeed * delta;
       this.zombieGroup.position.add(direction.multiplyScalar(moveAmount));
+
+      // Animate walking
+      this.animateWalking(delta);
     }
   }
 
@@ -379,5 +404,29 @@ export class Zombie {
       leftArmGroup.rotation.z = 0.2 + swayAmount;
       rightArmGroup.rotation.z = -0.2 - swayAmount;
     }
+  }
+
+  // Add a method to animate the legs while walking
+  private animateWalking(delta: number): void {
+    // Increment animation time based on movement speed
+    this.animationTime += delta * this.walkingSpeed;
+
+    // Calculate swing amounts using sine waves
+    // Use a slower, more exaggerated swing for zombie shamble
+    const legSwing = Math.sin(this.animationTime * 3) * 0.25;
+
+    // Animate legs in opposite phases
+    if (this.leftLeg && this.rightLeg) {
+      // Add the shambling gait base angles
+      this.leftLeg.rotation.x = 0.1 + legSwing;
+      this.rightLeg.rotation.x = -0.1 - legSwing;
+    }
+  }
+
+  // Add a method to reset limb positions when not moving
+  private resetLimbPositions(): void {
+    // Reset legs to their default shambling positions
+    if (this.leftLeg) this.leftLeg.rotation.x = 0.1;
+    if (this.rightLeg) this.rightLeg.rotation.x = -0.1;
   }
 }
