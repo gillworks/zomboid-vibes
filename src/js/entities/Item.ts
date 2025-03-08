@@ -93,7 +93,7 @@ export class Item {
   }
 
   public setPosition(x: number, y: number, z: number): void {
-    this.itemMesh.position.set(x, 1.5, z); // Fixed height of 1.5 units
+    this.itemMesh.position.set(x, 1.0, z); // Fixed height of 1.0 units
   }
 
   public getPosition(): THREE.Vector3 {
