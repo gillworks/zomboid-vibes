@@ -501,10 +501,35 @@ export class World {
       // Skip if outside the neighborhood
       if (Math.abs(z) > neighborhoodHalfSize) continue;
 
-      const lineGeometry = new THREE.BoxGeometry(neighborhoodSize, 0.05, 0.3);
-      const line = new THREE.Mesh(lineGeometry, linesMaterial);
-      line.position.set(0, 0.1, z);
-      this.roads.add(line);
+      // Create dotted line segments between intersections
+      for (let j = 0; j < numBlocksX; j++) {
+        const startX =
+          -neighborhoodHalfSize + j * this.blockSize + this.roadWidth / 2;
+        const endX =
+          -neighborhoodHalfSize + (j + 1) * this.blockSize - this.roadWidth / 2;
+        const segmentLength = endX - startX;
+
+        if (segmentLength <= 0) continue; // Skip if segment is too small
+
+        // Create dotted lines
+        const dashLength = 1; // Length of each dash
+        const gapLength = 1; // Length of gap between dashes
+        const totalDashes = Math.floor(
+          segmentLength / (dashLength + gapLength)
+        );
+
+        for (let k = 0; k < totalDashes; k++) {
+          const dashX = startX + (dashLength + gapLength) * k + dashLength / 2;
+
+          // Skip if this dash would extend into the intersection
+          if (dashX + dashLength / 2 > endX) continue;
+
+          const lineGeometry = new THREE.BoxGeometry(dashLength, 0.05, 0.3);
+          const line = new THREE.Mesh(lineGeometry, linesMaterial);
+          line.position.set(dashX, 0.1, z);
+          this.roads.add(line);
+        }
+      }
     }
 
     // Vertical road markings
@@ -514,10 +539,35 @@ export class World {
       // Skip if outside the neighborhood
       if (Math.abs(x) > neighborhoodHalfSize) continue;
 
-      const lineGeometry = new THREE.BoxGeometry(0.3, 0.05, neighborhoodSize);
-      const line = new THREE.Mesh(lineGeometry, linesMaterial);
-      line.position.set(x, 0.1, 0);
-      this.roads.add(line);
+      // Create dotted line segments between intersections
+      for (let j = 0; j < numBlocksZ; j++) {
+        const startZ =
+          -neighborhoodHalfSize + j * this.blockSize + this.roadWidth / 2;
+        const endZ =
+          -neighborhoodHalfSize + (j + 1) * this.blockSize - this.roadWidth / 2;
+        const segmentLength = endZ - startZ;
+
+        if (segmentLength <= 0) continue; // Skip if segment is too small
+
+        // Create dotted lines
+        const dashLength = 1; // Length of each dash
+        const gapLength = 1; // Length of gap between dashes
+        const totalDashes = Math.floor(
+          segmentLength / (dashLength + gapLength)
+        );
+
+        for (let k = 0; k < totalDashes; k++) {
+          const dashZ = startZ + (dashLength + gapLength) * k + dashLength / 2;
+
+          // Skip if this dash would extend into the intersection
+          if (dashZ + dashLength / 2 > endZ) continue;
+
+          const lineGeometry = new THREE.BoxGeometry(0.3, 0.05, dashLength);
+          const line = new THREE.Mesh(lineGeometry, linesMaterial);
+          line.position.set(x, 0.1, dashZ);
+          this.roads.add(line);
+        }
+      }
     }
   }
 
@@ -542,29 +592,40 @@ export class World {
       // Skip if outside the neighborhood
       if (Math.abs(z) > neighborhoodHalfSize) continue;
 
-      // Sidewalk above the road
-      const sidewalkTop = new THREE.Mesh(
-        new THREE.BoxGeometry(neighborhoodSize, 0.15, this.sidewalkWidth),
-        sidewalkMaterial
-      );
-      sidewalkTop.position.set(
-        0,
-        0.075,
-        z - (this.roadWidth / 2 + this.sidewalkWidth / 2)
-      );
-      this.sidewalks.add(sidewalkTop);
+      // Create sidewalk segments between intersections
+      for (let j = 0; j < numBlocksX; j++) {
+        const startX =
+          -neighborhoodHalfSize + j * this.blockSize + this.roadWidth / 2;
+        const endX =
+          -neighborhoodHalfSize + (j + 1) * this.blockSize - this.roadWidth / 2;
+        const segmentLength = endX - startX;
 
-      // Sidewalk below the road
-      const sidewalkBottom = new THREE.Mesh(
-        new THREE.BoxGeometry(neighborhoodSize, 0.15, this.sidewalkWidth),
-        sidewalkMaterial
-      );
-      sidewalkBottom.position.set(
-        0,
-        0.075,
-        z + (this.roadWidth / 2 + this.sidewalkWidth / 2)
-      );
-      this.sidewalks.add(sidewalkBottom);
+        if (segmentLength <= 0) continue; // Skip if segment is too small
+
+        // Sidewalk above the road
+        const sidewalkTop = new THREE.Mesh(
+          new THREE.BoxGeometry(segmentLength, 0.15, this.sidewalkWidth),
+          sidewalkMaterial
+        );
+        sidewalkTop.position.set(
+          startX + segmentLength / 2,
+          0.075,
+          z - (this.roadWidth / 2 + this.sidewalkWidth / 2)
+        );
+        this.sidewalks.add(sidewalkTop);
+
+        // Sidewalk below the road
+        const sidewalkBottom = new THREE.Mesh(
+          new THREE.BoxGeometry(segmentLength, 0.15, this.sidewalkWidth),
+          sidewalkMaterial
+        );
+        sidewalkBottom.position.set(
+          startX + segmentLength / 2,
+          0.075,
+          z + (this.roadWidth / 2 + this.sidewalkWidth / 2)
+        );
+        this.sidewalks.add(sidewalkBottom);
+      }
     }
 
     // Create sidewalks along vertical roads (only within the neighborhood)
@@ -574,29 +635,40 @@ export class World {
       // Skip if outside the neighborhood
       if (Math.abs(x) > neighborhoodHalfSize) continue;
 
-      // Sidewalk to the left of the road
-      const sidewalkLeft = new THREE.Mesh(
-        new THREE.BoxGeometry(this.sidewalkWidth, 0.15, neighborhoodSize),
-        sidewalkMaterial
-      );
-      sidewalkLeft.position.set(
-        x - (this.roadWidth / 2 + this.sidewalkWidth / 2),
-        0.075,
-        0
-      );
-      this.sidewalks.add(sidewalkLeft);
+      // Create sidewalk segments between intersections
+      for (let j = 0; j < numBlocksZ; j++) {
+        const startZ =
+          -neighborhoodHalfSize + j * this.blockSize + this.roadWidth / 2;
+        const endZ =
+          -neighborhoodHalfSize + (j + 1) * this.blockSize - this.roadWidth / 2;
+        const segmentLength = endZ - startZ;
 
-      // Sidewalk to the right of the road
-      const sidewalkRight = new THREE.Mesh(
-        new THREE.BoxGeometry(this.sidewalkWidth, 0.15, neighborhoodSize),
-        sidewalkMaterial
-      );
-      sidewalkRight.position.set(
-        x + (this.roadWidth / 2 + this.sidewalkWidth / 2),
-        0.075,
-        0
-      );
-      this.sidewalks.add(sidewalkRight);
+        if (segmentLength <= 0) continue; // Skip if segment is too small
+
+        // Sidewalk to the left of the road
+        const sidewalkLeft = new THREE.Mesh(
+          new THREE.BoxGeometry(this.sidewalkWidth, 0.15, segmentLength),
+          sidewalkMaterial
+        );
+        sidewalkLeft.position.set(
+          x - (this.roadWidth / 2 + this.sidewalkWidth / 2),
+          0.075,
+          startZ + segmentLength / 2
+        );
+        this.sidewalks.add(sidewalkLeft);
+
+        // Sidewalk to the right of the road
+        const sidewalkRight = new THREE.Mesh(
+          new THREE.BoxGeometry(this.sidewalkWidth, 0.15, segmentLength),
+          sidewalkMaterial
+        );
+        sidewalkRight.position.set(
+          x + (this.roadWidth / 2 + this.sidewalkWidth / 2),
+          0.075,
+          startZ + segmentLength / 2
+        );
+        this.sidewalks.add(sidewalkRight);
+      }
     }
   }
 
