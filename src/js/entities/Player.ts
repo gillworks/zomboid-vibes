@@ -45,72 +45,159 @@ export class Player {
   }
 
   private createPlayerModel(): void {
-    // Create a simple player model
-    // Body
-    const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8);
+    // Create a more realistic player model similar to Project Zomboid
+
+    // Create a group for the player character
+    const characterGroup = new THREE.Group();
+
+    // Body - use a box for a more PZ-like character
+    const bodyGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.3);
     const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2266cc,
-      roughness: 0.7,
-      metalness: 0.3,
+      color: 0x3a5e3a, // Green jacket like in PZ
+      roughness: 0.8,
+      metalness: 0.2,
     });
     this.playerBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    this.playerBody.position.y = 0.75;
+    this.playerBody.position.y = 0.9;
     this.playerBody.castShadow = true;
-    this.playerGroup.add(this.playerBody);
+    characterGroup.add(this.playerBody);
 
-    // Head
-    const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+    // Add details to the body (jacket)
+    const jacketDetailGeometry = new THREE.BoxGeometry(0.65, 0.85, 0.35);
+    const jacketDetailMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2a4e2a,
+      roughness: 0.9,
+      metalness: 0.1,
+      wireframe: true,
+    });
+    const jacketDetail = new THREE.Mesh(
+      jacketDetailGeometry,
+      jacketDetailMaterial
+    );
+    jacketDetail.position.copy(this.playerBody.position);
+    characterGroup.add(jacketDetail);
+
+    // Head - smaller and more square-ish for PZ style
+    const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
     const headMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffcc99,
+      color: 0xe0c8a0, // Skin tone
       roughness: 0.7,
       metalness: 0.1,
     });
     this.playerHead = new THREE.Mesh(headGeometry, headMaterial);
-    this.playerHead.position.y = 1.85;
+    this.playerHead.position.y = 1.55;
     this.playerHead.castShadow = true;
-    this.playerGroup.add(this.playerHead);
+    characterGroup.add(this.playerHead);
 
-    // Arms
-    const armGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1, 8);
+    // Hair
+    const hairGeometry = new THREE.BoxGeometry(0.42, 0.15, 0.42);
+    const hairMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3a2a1a, // Dark brown
+      roughness: 1.0,
+      metalness: 0.0,
+    });
+    const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+    hair.position.y = 1.75;
+    hair.castShadow = true;
+    characterGroup.add(hair);
+
+    // Arms - thinner and more angular
+    // Left arm
+    const armGeometry = new THREE.BoxGeometry(0.2, 0.6, 0.2);
     const armMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2266cc,
-      roughness: 0.7,
-      metalness: 0.3,
+      color: 0x3a5e3a, // Match jacket
+      roughness: 0.8,
+      metalness: 0.2,
     });
 
-    // Left arm
     const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    leftArm.position.set(-0.7, 0.75, 0);
-    leftArm.rotation.z = Math.PI / 2;
+    leftArm.position.set(-0.4, 0.9, 0);
     leftArm.castShadow = true;
-    this.playerGroup.add(leftArm);
+    characterGroup.add(leftArm);
 
     // Right arm
     const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-    rightArm.position.set(0.7, 0.75, 0);
-    rightArm.rotation.z = -Math.PI / 2;
+    rightArm.position.set(0.4, 0.9, 0);
     rightArm.castShadow = true;
-    this.playerGroup.add(rightArm);
+    characterGroup.add(rightArm);
 
-    // Legs
-    const legGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1, 8);
-    const legMaterial = new THREE.MeshStandardMaterial({
-      color: 0x444444,
+    // Hands
+    const handGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
+    const handMaterial = new THREE.MeshStandardMaterial({
+      color: 0xe0c8a0, // Skin tone
       roughness: 0.7,
+      metalness: 0.1,
+    });
+
+    // Left hand
+    const leftHand = new THREE.Mesh(handGeometry, handMaterial);
+    leftHand.position.set(-0.4, 0.55, 0);
+    leftHand.castShadow = true;
+    characterGroup.add(leftHand);
+
+    // Right hand
+    const rightHand = new THREE.Mesh(handGeometry, handMaterial);
+    rightHand.position.set(0.4, 0.55, 0);
+    rightHand.castShadow = true;
+    characterGroup.add(rightHand);
+
+    // Legs - use boxes for a more PZ-like character
+    const legGeometry = new THREE.BoxGeometry(0.25, 0.7, 0.25);
+    const legMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a1a1a, // Dark pants
+      roughness: 0.8,
       metalness: 0.2,
     });
 
     // Left leg
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-0.3, -0.25, 0);
+    leftLeg.position.set(-0.2, 0.35, 0);
     leftLeg.castShadow = true;
-    this.playerGroup.add(leftLeg);
+    characterGroup.add(leftLeg);
 
     // Right leg
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-    rightLeg.position.set(0.3, -0.25, 0);
+    rightLeg.position.set(0.2, 0.35, 0);
     rightLeg.castShadow = true;
-    this.playerGroup.add(rightLeg);
+    characterGroup.add(rightLeg);
+
+    // Feet
+    const footGeometry = new THREE.BoxGeometry(0.25, 0.1, 0.35);
+    const footMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3a3a3a, // Dark shoes
+      roughness: 0.9,
+      metalness: 0.3,
+    });
+
+    // Left foot
+    const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+    leftFoot.position.set(-0.2, 0.05, 0.05);
+    leftFoot.castShadow = true;
+    characterGroup.add(leftFoot);
+
+    // Right foot
+    const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+    rightFoot.position.set(0.2, 0.05, 0.05);
+    rightFoot.castShadow = true;
+    characterGroup.add(rightFoot);
+
+    // Add a backpack (common in PZ)
+    const backpackGeometry = new THREE.BoxGeometry(0.4, 0.5, 0.2);
+    const backpackMaterial = new THREE.MeshStandardMaterial({
+      color: 0x5a3a2a, // Brown backpack
+      roughness: 0.9,
+      metalness: 0.1,
+    });
+    const backpack = new THREE.Mesh(backpackGeometry, backpackMaterial);
+    backpack.position.set(0, 0.9, 0.25);
+    backpack.castShadow = true;
+    characterGroup.add(backpack);
+
+    // Add the character group to the player group
+    this.playerGroup.add(characterGroup);
+
+    // Adjust the overall scale
+    this.playerGroup.scale.set(0.8, 0.8, 0.8);
   }
 
   public update(delta: number): void {
