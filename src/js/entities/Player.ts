@@ -107,21 +107,21 @@ export class Player {
     const characterGroup = new THREE.Group();
 
     // Body - use a box for a more PZ-like character
-    const bodyGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.3);
+    const bodyGeometry = new THREE.BoxGeometry(0.6, 0.9, 0.3);
     const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff, // White shirt (changed from green jacket)
+      color: 0xffffff, // White shirt
       roughness: 0.8,
       metalness: 0.2,
     });
     this.playerBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    this.playerBody.position.y = 0.9;
+    this.playerBody.position.y = 0.95;
     this.playerBody.castShadow = true;
     characterGroup.add(this.playerBody);
 
     // Add details to the body (shirt)
-    const jacketDetailGeometry = new THREE.BoxGeometry(0.65, 0.85, 0.35);
+    const jacketDetailGeometry = new THREE.BoxGeometry(0.65, 0.95, 0.35);
     const jacketDetailMaterial = new THREE.MeshStandardMaterial({
-      color: 0xf0f0f0, // Slightly off-white for detail (changed from dark green)
+      color: 0xf0f0f0, // Slightly off-white for detail
       roughness: 0.9,
       metalness: 0.1,
       wireframe: true,
@@ -161,7 +161,7 @@ export class Player {
     // Left arm
     const armGeometry = new THREE.BoxGeometry(0.2, 0.6, 0.2);
     const armMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff, // White shirt for arms (changed from green)
+      color: 0xffffff, // White shirt for arms
       roughness: 0.8,
       metalness: 0.2,
     });
@@ -211,30 +211,42 @@ export class Player {
     // Legs - use boxes for a more PZ-like character
     const legGeometry = new THREE.BoxGeometry(0.25, 0.7, 0.25);
     const legMaterial = new THREE.MeshStandardMaterial({
-      color: 0x1a3a8a, // Blue pants (changed from dark gray/black)
+      color: 0x1a3a8a, // Blue pants
       roughness: 0.8,
       metalness: 0.2,
     });
 
+    // Add a waist/belt to better connect the shirt and pants
+    const waistGeometry = new THREE.BoxGeometry(0.62, 0.1, 0.32);
+    const waistMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a3a8a, // Same blue as pants
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+    const waist = new THREE.Mesh(waistGeometry, waistMaterial);
+    waist.position.y = 0.45; // Position at the bottom of the shirt/top of legs
+    waist.castShadow = true;
+    characterGroup.add(waist);
+
     // Create leg groups to allow for better positioning and parenting
     // Left leg
     const leftLegGroup = new THREE.Group();
-    leftLegGroup.position.set(-0.2, 0.35, 0);
+    leftLegGroup.position.set(-0.2, 0.3, 0);
     characterGroup.add(leftLegGroup);
 
     const leftLegMesh = new THREE.Mesh(legGeometry, legMaterial);
-    leftLegMesh.position.set(0, 0, 0); // Position relative to leg group
+    leftLegMesh.position.set(0, -0.05, 0);
     leftLegMesh.castShadow = true;
     leftLegGroup.add(leftLegMesh);
     this.leftLeg = leftLegGroup; // Store reference to the group instead
 
     // Right leg
     const rightLegGroup = new THREE.Group();
-    rightLegGroup.position.set(0.2, 0.35, 0);
+    rightLegGroup.position.set(0.2, 0.3, 0);
     characterGroup.add(rightLegGroup);
 
     const rightLegMesh = new THREE.Mesh(legGeometry, legMaterial);
-    rightLegMesh.position.set(0, 0, 0); // Position relative to leg group
+    rightLegMesh.position.set(0, -0.05, 0);
     rightLegMesh.castShadow = true;
     rightLegGroup.add(rightLegMesh);
     this.rightLeg = rightLegGroup; // Store reference to the group instead
@@ -866,7 +878,7 @@ export class Player {
     this.animationTime += delta * this.walkingSpeed;
 
     // Calculate swing amounts using sine waves
-    const legSwing = Math.sin(this.animationTime * 5) * 0.3;
+    const legSwing = Math.sin(this.animationTime * 5) * 0.25;
     const armSwing = Math.sin(this.animationTime * 5) * 0.2;
 
     // Animate legs in opposite phases
