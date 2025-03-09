@@ -194,7 +194,7 @@ export class LightingSystem {
     const glassMaterial = new THREE.MeshStandardMaterial({
       color: 0xffffcc,
       emissive: 0xffffcc,
-      emissiveIntensity: 0.7, // Moderate emissive intensity
+      emissiveIntensity: 1.0, // Increased from 0.7 to 1.0 for brighter appearance
       transparent: true,
       opacity: 0.8,
     });
@@ -267,7 +267,7 @@ export class LightingSystem {
     lamp.add(glass);
 
     // Create light with optimized shadow settings
-    const light = new THREE.PointLight(0xffffcc, 0, 15); // Reduced radius back to 15
+    const light = new THREE.PointLight(0xffffcc, 0, 20); // Increased radius from 15 to 20
     light.position.y = 5;
 
     // Only enable shadows on a small percentage of lights to improve performance
@@ -277,7 +277,7 @@ export class LightingSystem {
       light.shadow.mapSize.width = 256;
       light.shadow.mapSize.height = 256;
       light.shadow.camera.near = 0.5;
-      light.shadow.camera.far = 12; // Reduced from 15 to 12
+      light.shadow.camera.far = 15; // Increased from 12 to 15 to match the new radius
     }
 
     lamp.add(light);
@@ -637,7 +637,7 @@ export class LightingSystem {
     }
 
     // Apply lamp intensity
-    const actualLampIntensity = 2.0 * lampIntensity; // Base intensity of 2.0
+    const actualLampIntensity = 3.0 * lampIntensity; // Increased base intensity from 2.0 to 3.0
 
     // Update all street lamp lights
     for (const light of this.streetLampLights) {
