@@ -109,7 +109,7 @@ export class Player {
     // Body - use a box for a more PZ-like character
     const bodyGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.3);
     const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: 0x3a5e3a, // Green jacket like in PZ
+      color: 0xffffff, // White shirt (changed from green jacket)
       roughness: 0.8,
       metalness: 0.2,
     });
@@ -118,10 +118,10 @@ export class Player {
     this.playerBody.castShadow = true;
     characterGroup.add(this.playerBody);
 
-    // Add details to the body (jacket)
+    // Add details to the body (shirt)
     const jacketDetailGeometry = new THREE.BoxGeometry(0.65, 0.85, 0.35);
     const jacketDetailMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2a4e2a,
+      color: 0xf0f0f0, // Slightly off-white for detail (changed from dark green)
       roughness: 0.9,
       metalness: 0.1,
       wireframe: true,
@@ -161,7 +161,7 @@ export class Player {
     // Left arm
     const armGeometry = new THREE.BoxGeometry(0.2, 0.6, 0.2);
     const armMaterial = new THREE.MeshStandardMaterial({
-      color: 0x3a5e3a, // Match jacket
+      color: 0xffffff, // White shirt for arms (changed from green)
       roughness: 0.8,
       metalness: 0.2,
     });
@@ -211,7 +211,7 @@ export class Player {
     // Legs - use boxes for a more PZ-like character
     const legGeometry = new THREE.BoxGeometry(0.25, 0.7, 0.25);
     const legMaterial = new THREE.MeshStandardMaterial({
-      color: 0x1a1a1a, // Dark pants
+      color: 0x1a3a8a, // Blue pants (changed from dark gray/black)
       roughness: 0.8,
       metalness: 0.2,
     });
