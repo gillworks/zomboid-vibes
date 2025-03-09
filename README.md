@@ -59,10 +59,10 @@ npm run dev
 
 ### Time Controls
 
+- **T**: Open/close time controls help panel
 - **Click on the clock**: Show/hide time controls help panel
 - The following controls only work when the help panel is open:
-  - **T**: Speed up time (10x)
-  - **Y**: Normal time speed
+  - **Y**: Toggle time speed (normal/10x)
   - **U**: Set time to dawn
   - **I**: Set time to noon
   - **O**: Set time to dusk

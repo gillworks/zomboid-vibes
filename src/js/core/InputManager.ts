@@ -8,6 +8,7 @@ export class InputManager {
   private zombieManager?: ZombieManager;
   private lightingSystem?: LightingSystem;
   private keys: { [key: string]: boolean } = {};
+  private isTimeAccelerated: boolean = false; // Track if time is accelerated
 
   // Define isometric directions
   private readonly ISO_DIRECTIONS = {
@@ -43,6 +44,12 @@ export class InputManager {
   private onKeyDown(event: KeyboardEvent): void {
     this.keys[event.key.toLowerCase()] = true;
 
+    // Toggle time controls help panel with 'T' key
+    if (event.key.toLowerCase() === "t") {
+      this.toggleTimeControlsHelp();
+      return;
+    }
+
     // Handle time control keys only when the help panel is open
     if (this.lightingSystem) {
       const timeControlsHelp = document.getElementById("time-controls-help");
@@ -52,15 +59,8 @@ export class InputManager {
       // Only process time control keys if the help panel is open
       if (isHelpPanelOpen) {
         switch (event.key.toLowerCase()) {
-          case "t": // Speed up time
-            this.lightingSystem.setDaySpeed(10); // 10x speed
-            console.log("Time speed: 10x");
-            this.showTimeControlFeedback("Time speed: 10x");
-            break;
-          case "y": // Slow down time
-            this.lightingSystem.setDaySpeed(1); // Normal speed
-            console.log("Time speed: 1x");
-            this.showTimeControlFeedback("Time speed: 1x");
+          case "y": // Toggle time speed
+            this.toggleTimeSpeed();
             break;
           case "u": // Set to dawn
             this.lightingSystem.setTimeOfDay(0.25);
@@ -105,8 +105,8 @@ export class InputManager {
       }
     }
 
-    // Space key can still be used as an alternative attack method
-    if (event.key === " " || event.key === "space") {
+    // Handle attack
+    if (event.key === " " || event.key === "Space") {
       this.handlePlayerAttack();
     }
   }
@@ -320,5 +320,39 @@ export class InputManager {
     setTimeout(() => {
       feedbackElement.classList.remove("active");
     }, 1500);
+  }
+
+  // Toggle between normal and accelerated time speed
+  private toggleTimeSpeed(): void {
+    if (!this.lightingSystem) return;
+
+    this.isTimeAccelerated = !this.isTimeAccelerated;
+
+    if (this.isTimeAccelerated) {
+      // Accelerate time (10x)
+      this.lightingSystem.setDaySpeed(10);
+      console.log("Time speed: 10x");
+      this.showTimeControlFeedback("Time speed: 10x");
+    } else {
+      // Normal speed
+      this.lightingSystem.setDaySpeed(1);
+      console.log("Time speed: 1x");
+      this.showTimeControlFeedback("Time speed: 1x");
+    }
+  }
+
+  // Add a method to toggle the time controls help panel
+  private toggleTimeControlsHelp(): void {
+    const timeControlsHelp = document.getElementById("time-controls-help");
+    if (timeControlsHelp) {
+      timeControlsHelp.classList.toggle("hidden");
+
+      // Show feedback when toggling
+      if (!timeControlsHelp.classList.contains("hidden")) {
+        this.showTimeControlFeedback("Time controls opened");
+      } else {
+        this.showTimeControlFeedback("Time controls closed");
+      }
+    }
   }
 }

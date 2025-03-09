@@ -64,7 +64,7 @@ export class Game {
 
     // Set tone mapping for HDR-like effects
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; // Cinematic tone mapping
-    this.renderer.toneMappingExposure = 1.0; // Exposure level
+    this.renderer.toneMappingExposure = 1.2; // Slightly increased exposure for more vibrant lighting
 
     document
       .getElementById("game-container")
