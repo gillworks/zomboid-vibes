@@ -3,12 +3,14 @@ import * as TWEEN from "@tweenjs/tween.js";
 import { Zombie } from "./Zombie";
 import { World } from "../core/World";
 import { Item } from "./Item";
+import { UIManager } from "../ui/UIManager";
 
 export class Player {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private loadingManager: THREE.LoadingManager;
   private world: World | null = null; // Reference to the world for collision detection
+  private uiManager: UIManager | null = null; // Reference to the UI manager for visual effects
 
   private playerGroup: THREE.Group;
   private playerBody!: THREE.Mesh;
@@ -84,6 +86,10 @@ export class Player {
   // Set the world reference for collision detection
   public setWorld(world: World): void {
     this.world = world;
+  }
+
+  public setUIManager(uiManager: UIManager): void {
+    this.uiManager = uiManager;
   }
 
   private createPlayerModel(): void {
@@ -407,20 +413,10 @@ export class Player {
       }
     }
 
-    // Visual feedback for taking damage
-    const originalColor = (
-      this.playerBody.material as THREE.MeshStandardMaterial
-    ).color.clone();
-    (this.playerBody.material as THREE.MeshStandardMaterial).color.set(
-      0xff0000
-    );
-
-    // Reset color after a short time
-    setTimeout(() => {
-      (this.playerBody.material as THREE.MeshStandardMaterial).color.copy(
-        originalColor
-      );
-    }, 200);
+    // Use the UI manager to show damage effect
+    if (this.uiManager) {
+      this.uiManager.showDamage(amount);
+    }
   }
 
   public heal(amount: number): void {

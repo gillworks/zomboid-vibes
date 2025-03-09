@@ -10,6 +10,7 @@ export class UIManager {
   private thirstBar: HTMLElement | null;
   private timeText: HTMLElement | null;
   private timeIcon: HTMLElement | null;
+  private damageVignette: HTMLElement | null;
 
   constructor(player: Player) {
     this.player = player;
@@ -20,6 +21,7 @@ export class UIManager {
     this.thirstBar = document.getElementById("thirst-bar");
     this.timeText = document.getElementById("time-text");
     this.timeIcon = document.querySelector(".time-icon");
+    this.damageVignette = document.getElementById("damage-vignette");
   }
 
   public setLightingSystem(lightingSystem: LightingSystem): void {
@@ -139,7 +141,26 @@ export class UIManager {
   }
 
   public showDamage(amount: number): void {
-    this.showMessage(`Took ${amount} damage!`, 1500);
+    // Show damage message
+    //this.showMessage(`Took ${amount} damage!`, 1500);
+
+    // Show damage vignette effect
+    if (this.damageVignette) {
+      this.damageVignette.classList.remove("hidden");
+      this.damageVignette.classList.add("active");
+
+      // Remove the effect after a short delay
+      setTimeout(() => {
+        if (this.damageVignette) {
+          this.damageVignette.classList.remove("active");
+          setTimeout(() => {
+            if (this.damageVignette) {
+              this.damageVignette.classList.add("hidden");
+            }
+          }, 200); // Wait for fade out transition
+        }
+      }, 300); // Duration of the effect
+    }
   }
 
   public reset(): void {

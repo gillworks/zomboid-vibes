@@ -167,6 +167,9 @@ export class Game {
     this.uiManager = new UIManager(this.player);
     this.uiManager.setLightingSystem(this.lightingSystem);
 
+    // Connect the UI manager to the player for damage effects
+    this.player.setUIManager(this.uiManager);
+
     // Start the animation loop
     this.animate();
 
