@@ -131,24 +131,55 @@ export class Game {
     // Setup loading manager
     this.setupLoadingManager();
 
-    // Create the clock
-    this.clock = new THREE.Clock();
-
-    // Initialize the world
+    // Create the world
     this.world = new World(this.scene, this.loadingManager);
     this.world.init();
 
-    // Initialize the player
+    // Create the player
     this.player = new Player(this.scene, this.camera, this.loadingManager);
     this.player.setWorld(this.world);
 
-    // Initialize the zombie manager
+    // Create the input manager
+    this.inputManager = new InputManager(this.player);
+
+    // Create the UI manager
+    this.uiManager = new UIManager(this.player);
+
+    // Create the zombie manager
     this.zombieManager = new ZombieManager(
       this.scene,
       this.player,
       this.world,
       this.loadingManager
     );
+
+    // Create the item manager
+    this.itemManager = new ItemManager(
+      this.scene,
+      this.player,
+      this.world,
+      this.loadingManager
+    );
+
+    // Create the lighting system
+    this.lightingSystem = new LightingSystem(this.scene, this.world);
+    this.uiManager.setLightingSystem(this.lightingSystem);
+    this.lightingSystem.createStreetLamps();
+
+    // Connect the zombie manager to the UI manager
+    this.uiManager.setZombieManager(this.zombieManager);
+
+    // Connect the UI manager to the player for damage effects
+    this.player.setUIManager(this.uiManager);
+
+    // Create the command manager
+    this.commandManager = new CommandManager();
+    this.commandManager.setLightingSystem(this.lightingSystem);
+
+    // Set up input manager connections
+    this.inputManager.setZombieManager(this.zombieManager);
+    this.inputManager.setLightingSystem(this.lightingSystem);
+    this.inputManager.setCommandManager(this.commandManager);
 
     // Initialize the projectile manager
     this.projectileManager = new ProjectileManager(
@@ -160,34 +191,8 @@ export class Game {
     // Connect the projectile manager to the player
     this.player.setProjectileManager(this.projectileManager);
 
-    // Initialize the item manager
-    this.itemManager = new ItemManager(
-      this.scene,
-      this.player,
-      this.world,
-      this.loadingManager
-    );
-
-    // Initialize the lighting system
-    this.lightingSystem = new LightingSystem(this.scene, this.world);
-    this.lightingSystem.createStreetLamps();
-
-    // Create the command manager
-    this.commandManager = new CommandManager();
-    this.commandManager.setLightingSystem(this.lightingSystem);
-
-    // Set up input manager
-    this.inputManager = new InputManager(this.player);
-    this.inputManager.setZombieManager(this.zombieManager);
-    this.inputManager.setLightingSystem(this.lightingSystem);
-    this.inputManager.setCommandManager(this.commandManager);
-
-    // Initialize the UI manager and connect it to the lighting system
-    this.uiManager = new UIManager(this.player);
-    this.uiManager.setLightingSystem(this.lightingSystem);
-
-    // Connect the UI manager to the player for damage effects
-    this.player.setUIManager(this.uiManager);
+    // Reset the clock before starting the animation loop
+    this.clock = new THREE.Clock();
 
     // Start the animation loop
     this.animate();

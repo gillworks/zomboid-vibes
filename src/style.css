@@ -91,7 +91,8 @@ html {
 #hotbar-context-menu,
 #command-container,
 #command-input,
-#ammo-display {
+#ammo-display,
+#zombie-counter {
   pointer-events: auto;
 }
 
@@ -688,4 +689,45 @@ html {
     opacity: 0;
     transform: translate(-50%, -20px);
   }
+}
+
+/* Zombie Counter */
+#zombie-counter {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.6);
+  border: 1px solid #8b0000;
+  border-radius: 5px;
+  padding: 5px 10px;
+  color: #fff;
+  font-size: 1.2rem;
+  z-index: 20;
+  box-shadow: 0 0 5px rgba(139, 0, 0, 0.7);
+}
+
+.zombie-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  background-color: #8b0000;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.zombie-icon::before {
+  content: "Z";
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#zombie-count {
+  font-weight: bold;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
 }

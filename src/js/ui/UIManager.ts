@@ -1,9 +1,11 @@
 import { Player } from "../entities/Player";
 import { LightingSystem } from "../core/LightingSystem";
+import { ZombieManager } from "../entities/ZombieManager";
 
 export class UIManager {
   private player: Player;
   private lightingSystem: LightingSystem | null = null;
+  private zombieManager: ZombieManager | null = null;
 
   private healthBar: HTMLElement | null;
   private hungerBar: HTMLElement | null;
@@ -12,6 +14,7 @@ export class UIManager {
   private timeIcon: HTMLElement | null;
   private damageVignette: HTMLElement | null;
   private ammoDisplay: HTMLElement | null;
+  private zombieCount: HTMLElement | null;
 
   constructor(player: Player) {
     this.player = player;
@@ -24,6 +27,7 @@ export class UIManager {
     this.timeIcon = document.querySelector(".time-icon");
     this.damageVignette = document.getElementById("damage-vignette");
     this.ammoDisplay = document.getElementById("ammo-display");
+    this.zombieCount = document.getElementById("zombie-count");
 
     // Create ammo display if it doesn't exist
     if (!this.ammoDisplay) {
@@ -48,11 +52,16 @@ export class UIManager {
     this.lightingSystem = lightingSystem;
   }
 
+  public setZombieManager(zombieManager: ZombieManager): void {
+    this.zombieManager = zombieManager;
+  }
+
   public update(): void {
     this.updateHealthBar();
     this.updateHungerBar();
     this.updateThirstBar();
     this.updateTimeDisplay();
+    this.updateZombieCount();
   }
 
   private updateTimeDisplay(): void {
@@ -133,6 +142,14 @@ export class UIManager {
       } else {
         this.thirstBar.style.backgroundColor = "#0000cd"; // Medium blue
       }
+    }
+  }
+
+  private updateZombieCount(): void {
+    if (this.zombieCount && this.zombieManager) {
+      const zombies = this.zombieManager.getZombies();
+      const liveZombies = zombies.filter((zombie) => !zombie.isDead()).length;
+      this.zombieCount.textContent = liveZombies.toString();
     }
   }
 
