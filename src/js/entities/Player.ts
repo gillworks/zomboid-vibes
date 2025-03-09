@@ -107,19 +107,19 @@ export class Player {
     const characterGroup = new THREE.Group();
 
     // Body - use a box for a more PZ-like character
-    const bodyGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.4);
+    const bodyGeometry = new THREE.BoxGeometry(0.6, 0.9, 0.3);
     const bodyMaterial = new THREE.MeshStandardMaterial({
       color: 0xffffff, // White shirt
       roughness: 0.8,
       metalness: 0.2,
     });
     this.playerBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    this.playerBody.position.y = 0.9;
+    this.playerBody.position.y = 0.95;
     this.playerBody.castShadow = true;
     characterGroup.add(this.playerBody);
 
     // Add details to the body (shirt)
-    const jacketDetailGeometry = new THREE.BoxGeometry(0.65, 0.85, 0.45);
+    const jacketDetailGeometry = new THREE.BoxGeometry(0.65, 0.95, 0.35);
     const jacketDetailMaterial = new THREE.MeshStandardMaterial({
       color: 0xf0f0f0, // Slightly off-white for detail
       roughness: 0.9,
@@ -216,40 +216,37 @@ export class Player {
       metalness: 0.2,
     });
 
-    // Add a shirt overhang to better cover the tops of the legs
-    const shirtOverhangGeometry = new THREE.BoxGeometry(0.58, 0.15, 0.5);
-    const shirtOverhangMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff, // Same as shirt
+    // Add a waist/belt to better connect the shirt and pants
+    const waistGeometry = new THREE.BoxGeometry(0.62, 0.1, 0.32);
+    const waistMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a3a8a, // Same blue as pants
       roughness: 0.8,
       metalness: 0.2,
     });
-    const shirtOverhang = new THREE.Mesh(
-      shirtOverhangGeometry,
-      shirtOverhangMaterial
-    );
-    shirtOverhang.position.y = 0.5;
-    shirtOverhang.castShadow = true;
-    characterGroup.add(shirtOverhang);
+    const waist = new THREE.Mesh(waistGeometry, waistMaterial);
+    waist.position.y = 0.45; // Position at the bottom of the shirt/top of legs
+    waist.castShadow = true;
+    characterGroup.add(waist);
 
     // Create leg groups to allow for better positioning and parenting
     // Left leg
     const leftLegGroup = new THREE.Group();
-    leftLegGroup.position.set(-0.2, 0.35, 0);
+    leftLegGroup.position.set(-0.2, 0.3, 0);
     characterGroup.add(leftLegGroup);
 
     const leftLegMesh = new THREE.Mesh(legGeometry, legMaterial);
-    leftLegMesh.position.set(0, 0, 0);
+    leftLegMesh.position.set(0, -0.05, 0);
     leftLegMesh.castShadow = true;
     leftLegGroup.add(leftLegMesh);
     this.leftLeg = leftLegGroup; // Store reference to the group instead
 
     // Right leg
     const rightLegGroup = new THREE.Group();
-    rightLegGroup.position.set(0.2, 0.35, 0);
+    rightLegGroup.position.set(0.2, 0.3, 0);
     characterGroup.add(rightLegGroup);
 
     const rightLegMesh = new THREE.Mesh(legGeometry, legMaterial);
-    rightLegMesh.position.set(0, 0, 0);
+    rightLegMesh.position.set(0, -0.05, 0);
     rightLegMesh.castShadow = true;
     rightLegGroup.add(rightLegMesh);
     this.rightLeg = rightLegGroup; // Store reference to the group instead
