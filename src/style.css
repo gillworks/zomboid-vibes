@@ -104,11 +104,16 @@ html {
   pointer-events: none;
 }
 
-.bar-container:nth-child(2) {
+/* Target each bar container specifically using classes */
+.health-bar-container {
+  bottom: 20px;
+}
+
+.hunger-bar-container {
   bottom: 50px;
 }
 
-.bar-container:nth-child(3) {
+.thirst-bar-container {
   bottom: 80px;
 }
 

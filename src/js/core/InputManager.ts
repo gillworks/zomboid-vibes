@@ -2,11 +2,13 @@ import { Player } from "../entities/Player";
 import * as THREE from "three";
 import { ZombieManager } from "../entities/ZombieManager";
 import { LightingSystem } from "./LightingSystem";
+import { CommandManager } from "./CommandManager";
 
 export class InputManager {
   private player: Player;
   private zombieManager?: ZombieManager;
   private lightingSystem?: LightingSystem;
+  private commandManager?: CommandManager;
   private keys: { [key: string]: boolean } = {};
   private isTimeAccelerated: boolean = false; // Track if time is accelerated
 
@@ -41,7 +43,16 @@ export class InputManager {
     this.lightingSystem = lightingSystem;
   }
 
+  public setCommandManager(commandManager: CommandManager): void {
+    this.commandManager = commandManager;
+  }
+
   private onKeyDown(event: KeyboardEvent): void {
+    // If command input is open, don't handle other key presses
+    if (this.commandManager?.isInputOpen()) {
+      return;
+    }
+
     this.keys[event.key.toLowerCase()] = true;
 
     // Toggle time controls help panel with 'T' key
@@ -120,6 +131,11 @@ export class InputManager {
   private onKeyUp(event: KeyboardEvent): void {
     this.keys[event.key.toLowerCase()] = false;
 
+    // If command input is open, don't handle other key releases
+    if (this.commandManager?.isInputOpen()) {
+      return;
+    }
+
     // Stop player movement if no movement keys are pressed
     if (!this.isAnyMovementKeyPressed()) {
       this.player.stopMoving();
@@ -130,9 +146,13 @@ export class InputManager {
   }
 
   private onMouseDown(event: MouseEvent): void {
-    // Left mouse button (button 0) for attack
+    // If command input is open, don't handle mouse clicks
+    if (this.commandManager?.isInputOpen()) {
+      return;
+    }
+
     if (event.button === 0) {
-      console.log("Left mouse click detected - attacking");
+      // Left click
       this.handlePlayerAttack();
     }
   }
@@ -151,6 +171,12 @@ export class InputManager {
   }
 
   private handlePlayerMovement(): void {
+    // If command input is open, don't handle movement
+    if (this.commandManager?.isInputOpen()) {
+      this.player.stopMoving();
+      return;
+    }
+
     // Reset player movement first
     this.player.stopMoving();
 

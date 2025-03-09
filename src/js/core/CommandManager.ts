@@ -14,6 +14,7 @@ export class CommandManager {
   private commandSuggestions: HTMLElement | null;
   private lightingSystem: LightingSystem | null = null;
   private isTimeFreezed: boolean = false;
+  private isCommandInputOpen: boolean = false;
 
   constructor() {
     this.commandContainer = document.getElementById("command-container");
@@ -21,6 +22,7 @@ export class CommandManager {
       "command-input"
     ) as HTMLInputElement;
     this.commandSuggestions = document.getElementById("command-suggestions");
+    this.isCommandInputOpen = false;
 
     this.setupEventListeners();
     this.registerCommands();
@@ -117,6 +119,7 @@ export class CommandManager {
     if (this.commandContainer) {
       this.commandContainer.classList.remove("hidden");
       this.commandInput?.focus();
+      this.isCommandInputOpen = true;
     }
   }
 
@@ -129,7 +132,12 @@ export class CommandManager {
       if (this.commandSuggestions) {
         this.commandSuggestions.style.display = "none";
       }
+      this.isCommandInputOpen = false;
     }
+  }
+
+  public isInputOpen(): boolean {
+    return this.isCommandInputOpen;
   }
 
   private executeCommand(input: string): void {

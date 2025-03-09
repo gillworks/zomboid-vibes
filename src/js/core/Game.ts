@@ -168,6 +168,7 @@ export class Game {
     this.inputManager = new InputManager(this.player);
     this.inputManager.setZombieManager(this.zombieManager);
     this.inputManager.setLightingSystem(this.lightingSystem);
+    this.inputManager.setCommandManager(this.commandManager);
 
     // Initialize the UI manager and connect it to the lighting system
     this.uiManager = new UIManager(this.player);
