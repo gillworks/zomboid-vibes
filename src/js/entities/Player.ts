@@ -4,6 +4,7 @@ import { Zombie } from "./Zombie";
 import { World } from "../core/World";
 import { Item } from "./Item";
 import { UIManager } from "../ui/UIManager";
+import { ProjectileManager } from "./ProjectileManager";
 
 export class Player {
   private scene: THREE.Scene;
@@ -11,6 +12,7 @@ export class Player {
   private loadingManager: THREE.LoadingManager;
   private world: World | null = null; // Reference to the world for collision detection
   private uiManager: UIManager | null = null; // Reference to the UI manager for visual effects
+  private projectileManager: ProjectileManager | null = null; // Reference to the projectile manager
 
   private playerGroup: THREE.Group;
   private playerBody!: THREE.Mesh;
@@ -59,6 +61,16 @@ export class Player {
   // New member variable for attack animation timeout
   private _attackAnimationTimeout: number | null = null;
 
+  // Pistol properties
+  private pistolAmmo: number = 0; // Keep this for backward compatibility
+  private maxPistolAmmo: number = 30;
+  private pistolCooldown: number = 0.5; // seconds between shots
+  private pistolMesh: THREE.Mesh | null = null;
+  private pistolEquipped: boolean = false;
+  private pistolDamage: number = 100; // Increased to match projectile damage
+  private pistolRange: number = 100; // Increased to match projectile maxDistance
+  private pistolSound: HTMLAudioElement | null = null;
+
   constructor(
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
@@ -89,9 +101,23 @@ export class Player {
 
     // Update camera position immediately
     this.updateCameraPosition();
+
+    // Create pistol sound
+    this.createPistolSound();
   }
 
-  // Set the world reference for collision detection
+  private createPistolSound(): void {
+    // Create audio element for pistol sound
+    this.pistolSound = new Audio();
+    this.pistolSound.src = "assets/sounds/pistol-shot.mp3";
+    this.pistolSound.volume = 0.3;
+    this.pistolSound.preload = "auto";
+  }
+
+  public setProjectileManager(projectileManager: ProjectileManager): void {
+    this.projectileManager = projectileManager;
+  }
+
   public setWorld(world: World): void {
     this.world = world;
   }
@@ -334,9 +360,7 @@ export class Player {
     }
 
     // Update attack cooldown
-    if (this.timeSinceLastAttack < this.attackCooldown) {
-      this.timeSinceLastAttack += delta;
-    }
+    this.timeSinceLastAttack += delta;
 
     // Update attack animation
     if (this.isAttacking) {
@@ -360,6 +384,14 @@ export class Player {
       this.thirst = 0;
       // Start taking damage when dehydrated
       this.takeDamage(0.07, "dehydration"); // Dehydration is more dangerous than hunger
+    }
+
+    // Update camera position
+    this.updateCameraPosition();
+
+    // Update pistol position if equipped
+    if (this.pistolEquipped && this.pistolMesh) {
+      this.updatePistolPosition();
     }
   }
 
@@ -459,9 +491,10 @@ export class Player {
     // Check if the item is stackable
     // If it's an Item object, use its isStackable method
     // Otherwise, determine stackability based on type
-    const isItemStackable = item.isStackable
-      ? item.isStackable()
-      : item.type !== "weapon";
+    const isItemStackable =
+      typeof item.isStackable === "function"
+        ? item.isStackable()
+        : item.type !== "weapon";
 
     console.log("Item is stackable:", isItemStackable);
 
@@ -482,16 +515,24 @@ export class Player {
       if (existingHotbarStackIndex !== -1) {
         // Add to existing stack in hotbar
         if (this.hotbar[existingHotbarStackIndex].incrementQuantity) {
-          this.hotbar[existingHotbarStackIndex].incrementQuantity();
-          console.log("Incremented quantity of existing hotbar stack");
+          // If the item has a quantity property, increment by that amount
+          const quantityToAdd = item.quantity || 1;
+          for (let i = 0; i < quantityToAdd; i++) {
+            this.hotbar[existingHotbarStackIndex].incrementQuantity();
+          }
+          console.log(
+            `Incremented quantity of existing hotbar stack by ${quantityToAdd}`
+          );
         } else {
           // For simple objects, add a quantity property if it doesn't exist
           if (!this.hotbar[existingHotbarStackIndex].quantity) {
             this.hotbar[existingHotbarStackIndex].quantity = 1;
           }
-          this.hotbar[existingHotbarStackIndex].quantity++;
+          // Add the item's quantity (or 1 if not specified)
+          const quantityToAdd = item.quantity || 1;
+          this.hotbar[existingHotbarStackIndex].quantity += quantityToAdd;
           console.log(
-            "Incremented quantity of existing hotbar stack (simple object)"
+            `Incremented quantity of existing hotbar stack by ${quantityToAdd} (simple object)`
           );
         }
 
@@ -524,15 +565,25 @@ export class Player {
       if (existingStackIndex !== -1) {
         // Add to existing stack
         if (this.inventory[existingStackIndex].incrementQuantity) {
-          this.inventory[existingStackIndex].incrementQuantity();
-          console.log("Incremented quantity of existing stack");
+          // If the item has a quantity property, increment by that amount
+          const quantityToAdd = item.quantity || 1;
+          for (let i = 0; i < quantityToAdd; i++) {
+            this.inventory[existingStackIndex].incrementQuantity();
+          }
+          console.log(
+            `Incremented quantity of existing stack by ${quantityToAdd}`
+          );
         } else {
           // For simple objects, add a quantity property if it doesn't exist
           if (!this.inventory[existingStackIndex].quantity) {
             this.inventory[existingStackIndex].quantity = 1;
           }
-          this.inventory[existingStackIndex].quantity++;
-          console.log("Incremented quantity of existing stack (simple object)");
+          // Add the item's quantity (or 1 if not specified)
+          const quantityToAdd = item.quantity || 1;
+          this.inventory[existingStackIndex].quantity += quantityToAdd;
+          console.log(
+            `Incremented quantity of existing stack by ${quantityToAdd} (simple object)`
+          );
         }
 
         // Remove the item from the scene if it has that method
@@ -691,6 +742,11 @@ export class Player {
   }
 
   public equipItem(index: number): void {
+    // If we have a pistol equipped, hide the ammo display before changing equipment
+    if (this.pistolEquipped && this.uiManager) {
+      this.uiManager.hideAmmoDisplay();
+    }
+
     if (
       index >= 0 &&
       index < this.inventory.length &&
@@ -699,6 +755,9 @@ export class Player {
       // Store the reference to the item
       this.equippedItem = this.inventory[index];
       this.activeHotbarSlot = -1; // Clear active hotbar slot
+
+      // Check if it's a pistol
+      this.updateEquippedWeapon();
     }
   }
 
@@ -708,16 +767,124 @@ export class Player {
       index < this.hotbar.length &&
       this.hotbar[index] !== null
     ) {
+      console.log("Equipping hotbar item at index:", index);
+      console.log("Item:", this.hotbar[index]);
+
       // If this slot is already active, deactivate it
       if (this.activeHotbarSlot === index) {
+        console.log("Deactivating already active hotbar slot");
         this.activeHotbarSlot = -1;
         this.equippedItem = null;
+
+        // Hide ammo display if we're unequipping
+        if (this.pistolEquipped && this.uiManager) {
+          this.uiManager.hideAmmoDisplay();
+        }
+
+        this.updateEquippedWeapon();
       } else {
         // Store the reference to the item
         this.equippedItem = this.hotbar[index];
         this.activeHotbarSlot = index;
+        console.log("Activated hotbar slot:", index);
+        console.log("Equipped item:", this.equippedItem);
+        this.updateEquippedWeapon();
       }
     }
+  }
+
+  private updateEquippedWeapon(): void {
+    // Remove any existing weapon mesh
+    if (this.pistolMesh) {
+      this.scene.remove(this.pistolMesh);
+      this.pistolMesh = null;
+    }
+
+    this.pistolEquipped = false;
+
+    // Check if we have a pistol equipped
+    if (this.equippedItem) {
+      // Get item type and name, handling both Item objects and simple objects
+      const itemType = this.equippedItem.getType
+        ? this.equippedItem.getType()
+        : this.equippedItem.type;
+
+      const itemName = this.equippedItem.getName
+        ? this.equippedItem.getName()
+        : this.equippedItem.name;
+
+      console.log("Item type:", itemType, "Item name:", itemName);
+
+      // Check if this is a pistol
+      const isPistol =
+        (itemType === "weapon" && itemName === "Pistol") ||
+        (this.equippedItem.isPistol && this.equippedItem.isPistol());
+
+      if (isPistol) {
+        console.log("Pistol equipped, creating mesh");
+        // Create and add pistol mesh
+        this.pistolMesh = this.createPistolMesh();
+        this.scene.add(this.pistolMesh);
+        this.pistolEquipped = true;
+
+        // Update pistol position
+        this.updatePistolPosition();
+
+        // Update UI if available - show the current ammo count from inventory
+        if (this.uiManager) {
+          // Count ammo in inventory and hotbar
+          const ammoCount = this.countAmmoInInventory();
+          this.uiManager.updateAmmoDisplay(ammoCount);
+        }
+      } else {
+        // Hide ammo display if not a pistol
+        if (this.uiManager) {
+          this.uiManager.hideAmmoDisplay();
+        }
+      }
+    } else {
+      // Hide ammo display if nothing equipped
+      if (this.uiManager) {
+        this.uiManager.hideAmmoDisplay();
+      }
+    }
+  }
+
+  // Count all ammo in inventory and hotbar
+  private countAmmoInInventory(): number {
+    let count = 0;
+
+    // Check hotbar
+    for (const item of this.hotbar) {
+      if (item) {
+        const itemType = item.getType ? item.getType() : item.type;
+        const itemName = item.getName ? item.getName() : item.name;
+
+        if (itemType === "ammo" && itemName === "Pistol Ammo") {
+          const quantity = item.getQuantity
+            ? item.getQuantity()
+            : item.quantity || 1;
+          count += quantity;
+        }
+      }
+    }
+
+    // Check inventory
+    for (const item of this.inventory) {
+      if (item) {
+        const itemType = item.getType ? item.getType() : item.type;
+        const itemName = item.getName ? item.getName() : item.name;
+
+        if (itemType === "ammo" && itemName === "Pistol Ammo") {
+          const quantity = item.getQuantity
+            ? item.getQuantity()
+            : item.quantity || 1;
+          count += quantity;
+        }
+      }
+    }
+
+    return count;
   }
 
   public moveToHotbar(inventoryIndex: number, hotbarIndex: number): boolean {
@@ -855,6 +1022,19 @@ export class Player {
     this.timeSinceLastAttack = 0;
     this.isAttacking = false;
 
+    // Reset pistol
+    this.pistolAmmo = 0; // Keep this for backward compatibility
+    if (this.pistolMesh) {
+      this.scene.remove(this.pistolMesh);
+      this.pistolMesh = null;
+    }
+    this.pistolEquipped = false;
+
+    // Hide ammo display
+    if (this.uiManager) {
+      this.uiManager.hideAmmoDisplay();
+    }
+
     // Reset position
     this.playerGroup.position.set(0, 0.25, 0); // Raise the player by to prevent feet sinking into ground
     this.playerGroup.rotation.set(0, 0, 0);
@@ -911,16 +1091,37 @@ export class Player {
   public attack(zombies: Zombie[]): void {
     // Check if we can attack
     if (this.timeSinceLastAttack < this.attackCooldown) {
-      console.log(
-        "Attack on cooldown: ",
-        this.timeSinceLastAttack,
-        "/",
-        this.attackCooldown
-      );
       return;
     }
 
-    // Remove the check for isAttacking to allow attack animation to always play
+    // Check if we have a pistol equipped
+    if (this.equippedItem) {
+      // Get item type and name, handling both Item objects and simple objects
+      const itemType = this.equippedItem.getType
+        ? this.equippedItem.getType()
+        : this.equippedItem.type;
+
+      const itemName = this.equippedItem.getName
+        ? this.equippedItem.getName()
+        : this.equippedItem.name;
+
+      // Check if this is a pistol
+      const isPistol =
+        (itemType === "weapon" && itemName === "Pistol") ||
+        (this.equippedItem.isPistol && this.equippedItem.isPistol());
+
+      // Check if we have ammo in inventory
+      const ammoCount = this.countAmmoInInventory();
+
+      if (isPistol && ammoCount > 0) {
+        // Find and use one ammo from inventory or hotbar
+        this.useOneAmmo();
+        this.shootPistol();
+        return;
+      }
+    }
+
+    // Regular melee attack
     console.log("Attack initiated");
 
     // Reset cooldown
@@ -1057,5 +1258,237 @@ export class Player {
     if (this.thirst > 100) {
       this.thirst = 100;
     }
+  }
+
+  private updatePistolPosition(): void {
+    if (!this.pistolMesh) return;
+
+    // Position pistol in the right hand
+    const rightHand = this.rightArm.children[1]; // Assuming the hand is the second child of the arm group
+    if (rightHand) {
+      // Get world position of the right hand
+      const handPosition = new THREE.Vector3();
+      rightHand.getWorldPosition(handPosition);
+
+      // Position pistol relative to the hand
+      this.pistolMesh.position.copy(handPosition);
+
+      // Rotate pistol to match player's rotation plus an offset
+      this.pistolMesh.rotation.copy(this.playerGroup.rotation);
+      this.pistolMesh.rotation.y += Math.PI; // Adjust to point forward
+    }
+  }
+
+  private createPistolMesh(): THREE.Mesh {
+    // Create a simple pistol model
+    const pistolGroup = new THREE.Group();
+
+    // Pistol body
+    const bodyGeometry = new THREE.BoxGeometry(0.1, 0.15, 0.3);
+    const bodyMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2f4f4f,
+      roughness: 0.5,
+      metalness: 0.8,
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    pistolGroup.add(body);
+
+    // Pistol handle
+    const handleGeometry = new THREE.BoxGeometry(0.08, 0.2, 0.1);
+    const handleMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8b4513,
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+    handle.position.set(0, -0.15, -0.1);
+    pistolGroup.add(handle);
+
+    // Pistol barrel
+    const barrelGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8);
+    const barrelMaterial = new THREE.MeshStandardMaterial({
+      color: 0x444444,
+      roughness: 0.3,
+      metalness: 0.9,
+    });
+    const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0, 0.25);
+    pistolGroup.add(barrel);
+
+    // Create a mesh to represent the entire pistol
+    const pistolMesh = new THREE.Mesh();
+    pistolMesh.add(pistolGroup);
+    pistolMesh.castShadow = true;
+
+    return pistolMesh;
+  }
+
+  private shootPistol(): void {
+    if (!this.projectileManager) {
+      console.error("ProjectileManager not set");
+      return;
+    }
+
+    // Reset cooldown
+    this.timeSinceLastAttack = 0;
+
+    // Play pistol animation
+    this.animatePistolShot();
+
+    // Play pistol sound
+    if (this.pistolSound) {
+      this.pistolSound.currentTime = 0;
+      this.pistolSound
+        .play()
+        .catch((e) => console.error("Error playing pistol sound:", e));
+    }
+
+    // Get player position and forward direction
+    const playerPos = this.playerGroup.position.clone();
+    playerPos.y += 1.5; // Adjust to be at head height
+
+    const playerForward = new THREE.Vector3(0, 0, -1);
+    playerForward.applyEuler(this.playerGroup.rotation);
+
+    // Create a projectile
+    this.projectileManager.createProjectile(
+      playerPos,
+      playerForward,
+      this.pistolDamage
+    );
+
+    // Update ammo display
+    if (this.uiManager && this.pistolEquipped) {
+      const ammoCount = this.countAmmoInInventory();
+      this.uiManager.updateAmmoDisplay(ammoCount);
+    }
+  }
+
+  private animatePistolShot(): void {
+    if (!this.pistolMesh) return;
+
+    // Store original position
+    const originalPosition = this.pistolMesh.position.clone();
+
+    // Create a recoil animation
+    const recoilDistance = 0.1;
+    const recoilDuration = 100; // ms
+
+    // Move pistol backward
+    new TWEEN.Tween(this.pistolMesh.position)
+      .to(
+        {
+          z: originalPosition.z + recoilDistance,
+        },
+        recoilDuration
+      )
+      .easing(TWEEN.Easing.Quadratic.Out)
+      .start()
+      .onComplete(() => {
+        // Return to original position
+        if (this.pistolMesh) {
+          new TWEEN.Tween(this.pistolMesh.position)
+            .to(
+              {
+                z: originalPosition.z,
+              },
+              recoilDuration
+            )
+            .easing(TWEEN.Easing.Quadratic.In)
+            .start();
+        }
+      });
+  }
+
+  public addAmmo(amount: number): void {
+    // Add ammo to inventory as a new item with the correct quantity
+    const ammoItem = {
+      type: "ammo",
+      name: "Pistol Ammo",
+      value: amount, // This is the value from the pickup (10 bullets)
+      quantity: amount, // Set quantity to match the value
+    };
+
+    const added = this.addToInventory(ammoItem);
+
+    // Update UI if available
+    if (this.uiManager && added) {
+      // Show a message about the ammo pickup
+      this.uiManager.showMessage(`Added ${amount} pistol ammo`);
+
+      // Update ammo display if pistol is equipped
+      if (this.pistolEquipped) {
+        const ammoCount = this.countAmmoInInventory();
+        this.uiManager.updateAmmoDisplay(ammoCount);
+      }
+    }
+  }
+
+  public getPistolAmmo(): number {
+    return this.countAmmoInInventory();
+  }
+
+  public getMaxPistolAmmo(): number {
+    return this.maxPistolAmmo;
+  }
+
+  public getUIManager(): UIManager | null {
+    return this.uiManager;
+  }
+
+  public isPistolEquipped(): boolean {
+    return this.pistolEquipped;
+  }
+
+  // Use one ammo from inventory or hotbar
+  private useOneAmmo(): boolean {
+    // First check if we have ammo in the hotbar
+    for (let i = 0; i < this.hotbar.length; i++) {
+      const item = this.hotbar[i];
+      if (item) {
+        const itemType = item.getType ? item.getType() : item.type;
+        const itemName = item.getName ? item.getName() : item.name;
+
+        if (itemType === "ammo" && itemName === "Pistol Ammo") {
+          const itemQuantity = item.getQuantity
+            ? item.getQuantity()
+            : item.quantity || 1;
+
+          // Remove one ammo
+          if (itemQuantity > 1) {
+            this.removeFromHotbar(i, 1);
+          } else {
+            this.removeFromHotbar(i);
+          }
+          return true;
+        }
+      }
+    }
+
+    // If no ammo in hotbar, check inventory
+    for (let i = 0; i < this.inventory.length; i++) {
+      const item = this.inventory[i];
+      if (item) {
+        const itemType = item.getType ? item.getType() : item.type;
+        const itemName = item.getName ? item.getName() : item.name;
+
+        if (itemType === "ammo" && itemName === "Pistol Ammo") {
+          const itemQuantity = item.getQuantity
+            ? item.getQuantity()
+            : item.quantity || 1;
+
+          // Remove one ammo
+          if (itemQuantity > 1) {
+            this.removeFromInventory(i, 1);
+          } else {
+            this.removeFromInventory(i);
+          }
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 }

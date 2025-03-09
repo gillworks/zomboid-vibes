@@ -9,6 +9,7 @@ import { ZombieManager } from "../entities/ZombieManager";
 import { ItemManager } from "../entities/ItemManager";
 import { LightingSystem } from "./LightingSystem";
 import { CommandManager } from "./CommandManager";
+import { ProjectileManager } from "../entities/ProjectileManager";
 
 export class Game {
   private scene: THREE.Scene;
@@ -24,6 +25,7 @@ export class Game {
   private itemManager!: ItemManager;
   private lightingSystem!: LightingSystem;
   private commandManager!: CommandManager;
+  private projectileManager!: ProjectileManager;
 
   private isGameOver: boolean = false;
   private isLoading: boolean = true;
@@ -148,6 +150,16 @@ export class Game {
       this.loadingManager
     );
 
+    // Initialize the projectile manager
+    this.projectileManager = new ProjectileManager(
+      this.scene,
+      this.world,
+      this.zombieManager
+    );
+
+    // Connect the projectile manager to the player
+    this.player.setProjectileManager(this.projectileManager);
+
     // Initialize the item manager
     this.itemManager = new ItemManager(
       this.scene,
@@ -205,6 +217,7 @@ export class Game {
       this.zombieManager.update(delta);
       this.itemManager.update(delta);
       this.world.update(delta);
+      this.projectileManager.update(delta);
       this.uiManager.update();
       this.inputManager.update();
 
@@ -262,23 +275,16 @@ export class Game {
     // Reset game state
     this.isGameOver = false;
 
+    // Reset all game components
+    this.player.reset();
+    this.zombieManager.reset();
+    this.uiManager.reset();
+
     // Hide game over screen
     const gameOverScreen = document.getElementById("game-over");
     if (gameOverScreen) {
       gameOverScreen.classList.add("hidden");
     }
-
-    // Reset player
-    this.player.reset();
-
-    // Reset zombies
-    this.zombieManager.reset();
-
-    // Reset items
-    this.itemManager.reset();
-
-    // Reset UI
-    this.uiManager.reset();
   }
 
   private onWindowResize(): void {

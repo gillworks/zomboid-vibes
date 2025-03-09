@@ -16,6 +16,7 @@ Zomboid Vibes is a browser-based survival horror game inspired by Project Zomboi
 - Realistic day/night cycle with dynamic lighting
 - Street lamps that automatically turn on at night
 - Building interiors (coming soon)
+- Ranged weapons with ammo system
 
 ## Getting Started
 
@@ -53,9 +54,33 @@ npm run dev
 
 - **WASD**: Move the player
 - **Mouse**: Look around
-- **Left Click**: Attack zombies
+- **Left Click**: Attack zombies or shoot with equipped weapon
 - **I**: Open/close inventory
 - **E**: Interact with objects (coming soon)
+- **1, 2, 3**: Select hotbar slots
+
+### Weapons System
+
+#### Melee Weapons
+
+- Melee weapons like the Baseball Bat deal damage to zombies at close range
+- Equip a melee weapon from your inventory or hotbar
+- Left click to swing the weapon when zombies are in range
+
+#### Pistol
+
+- The pistol is a ranged weapon that can hit zombies from a distance
+- To use the pistol:
+  1. Find and pick up a pistol in the game world
+  2. Find and pick up pistol ammo (yellow boxes)
+  3. Equip the pistol from your inventory or hotbar
+  4. Left click to shoot
+  5. Monitor your ammo count displayed in the bottom right corner
+- Each pistol shot:
+  - Deals high damage to zombies
+  - Has a longer range than melee weapons
+  - Applies knockback to zombies
+  - Consumes one ammo
 
 ### Time Controls
 
@@ -88,6 +113,18 @@ A clock in the top-right corner shows the current in-game time:
 - Visual indicator showing sun/moon position
 - 12-hour time format with AM/PM
 - Special visual effects during dawn and dusk
+
+### Inventory and Hotbar System
+
+- Collect items throughout the world
+- Manage your inventory with up to 16 slots
+- Equip items to your 3-slot hotbar for quick access
+- Different item types:
+  - Food: Restores hunger
+  - Water: Restores thirst
+  - Medkits: Restore health
+  - Weapons: Used to attack zombies
+  - Ammo: Used for ranged weapons
 
 ## Building for Production
 

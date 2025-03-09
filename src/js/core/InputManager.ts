@@ -118,6 +118,9 @@ export class InputManager {
     // Handle hotbar key presses (1-3)
     if (event.key >= "1" && event.key <= "3") {
       const hotbarIndex = parseInt(event.key) - 1;
+      console.log(
+        `Hotbar key ${event.key} pressed, using hotbar index ${hotbarIndex}`
+      );
       this.useHotbarItem(hotbarIndex);
       return;
     }
@@ -158,16 +161,16 @@ export class InputManager {
   }
 
   private handlePlayerAttack(): void {
-    // Make sure we have a zombie manager
-    if (!this.zombieManager) {
-      console.log("No zombie manager available");
-      return;
-    }
+    if (this.zombieManager) {
+      // Get all zombies
+      const zombies = this.zombieManager.getZombies();
 
-    // Get zombies and attack
-    const zombies = this.zombieManager.getZombies();
-    console.log("Attacking zombies, count:", zombies.length);
-    this.player.attack(zombies);
+      // Check if player can attack
+      if (this.player.canAttack()) {
+        // Trigger attack
+        this.player.attack(zombies);
+      }
+    }
   }
 
   private handlePlayerMovement(): void {
@@ -423,7 +426,12 @@ export class InputManager {
     const hotbar = this.player.getHotbar();
     const item = hotbar[index];
 
-    if (!item) return;
+    console.log(`Using hotbar item at index ${index}:`, item);
+
+    if (!item) {
+      console.log("No item in this hotbar slot");
+      return;
+    }
 
     // Get item type and other properties
     const itemType = item.getType ? item.getType() : item.type;
@@ -433,9 +441,19 @@ export class InputManager {
       ? item.getQuantity()
       : item.quantity || 1;
 
+    console.log(
+      `Item type: ${itemType}, name: ${itemName}, value: ${itemValue}, quantity: ${itemQuantity}`
+    );
+
     // Handle different item types
     switch (itemType) {
       case "weapon":
+        console.log("Equipping weapon from hotbar");
+        this.player.equipHotbarItem(index);
+        break;
+      case "ammo":
+        // For ammo, just equip it like a weapon so it can be seen in the hotbar
+        console.log("Equipping ammo from hotbar");
         this.player.equipHotbarItem(index);
         break;
       case "food":
@@ -486,6 +504,10 @@ export class InputManager {
     // Handle different item types
     switch (itemType) {
       case "weapon":
+        this.player.equipItem(index);
+        break;
+      case "ammo":
+        // For ammo, just equip it like a weapon so it can be seen in the inventory
         this.player.equipItem(index);
         break;
       case "food":

@@ -338,6 +338,7 @@ export class Zombie {
 
     console.log("Zombie taking damage:", amount);
     console.log("Current health:", this.health);
+    console.log("Zombie position:", this.zombieGroup.position);
 
     this.health -= amount;
     console.log("New health:", this.health);

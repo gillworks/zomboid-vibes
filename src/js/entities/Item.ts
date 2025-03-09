@@ -37,30 +37,62 @@ export class Item {
 
   private createItemMesh(type: string, color: number): THREE.Mesh {
     let geometry: THREE.BufferGeometry;
+    let material: THREE.MeshStandardMaterial;
 
     // Choose geometry based on item type
     switch (type) {
       case "food":
         geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        material = new THREE.MeshStandardMaterial({
+          color: color,
+          roughness: 0.5,
+          metalness: 0.5,
+          emissive: color,
+          emissiveIntensity: 0.2,
+        });
         break;
       case "medkit":
         geometry = new THREE.BoxGeometry(0.5, 0.3, 0.5);
+        material = new THREE.MeshStandardMaterial({
+          color: color,
+          roughness: 0.5,
+          metalness: 0.5,
+          emissive: color,
+          emissiveIntensity: 0.2,
+        });
         break;
       case "weapon":
         geometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+        material = new THREE.MeshStandardMaterial({
+          color: color,
+          roughness: 0.5,
+          metalness: 0.5,
+          emissive: color,
+          emissiveIntensity: 0.2,
+        });
+        break;
+      case "ammo":
+        // Create a larger, more visible box shape for ammo
+        geometry = new THREE.BoxGeometry(0.4, 0.3, 0.5);
+        // Make ammo boxes brighter and more reflective
+        material = new THREE.MeshStandardMaterial({
+          color: color,
+          roughness: 0.3,
+          metalness: 0.7,
+          emissive: color,
+          emissiveIntensity: 0.5, // Higher emissive intensity for better visibility
+        });
         break;
       default:
         geometry = new THREE.SphereGeometry(0.3, 16, 16);
+        material = new THREE.MeshStandardMaterial({
+          color: color,
+          roughness: 0.5,
+          metalness: 0.5,
+          emissive: color,
+          emissiveIntensity: 0.2,
+        });
     }
-
-    // Create material
-    const material = new THREE.MeshStandardMaterial({
-      color: color,
-      roughness: 0.5,
-      metalness: 0.5,
-      emissive: color,
-      emissiveIntensity: 0.2,
-    });
 
     // Create mesh
     const mesh = new THREE.Mesh(geometry, material);
@@ -74,6 +106,11 @@ export class Item {
     // Store original position
     const originalY = this.itemMesh.position.y;
 
+    // For ammo items, float higher and rotate faster
+    const isAmmo = this.type === "ammo";
+    const floatHeight = isAmmo ? 0.2 : 0.1; // Higher float for ammo
+    const rotationSpeed = isAmmo ? 0.03 : 0.01; // Faster rotation for ammo
+
     // Create animation function
     const animate = () => {
       // Only continue if the mesh is still in the scene
@@ -81,10 +118,10 @@ export class Item {
 
       // Calculate new Y position with sine wave
       const time = Date.now() * 0.001;
-      this.itemMesh.position.y = originalY + Math.sin(time * 2) * 0.1;
+      this.itemMesh.position.y = originalY + Math.sin(time * 2) * floatHeight;
 
       // Rotate the item
-      this.itemMesh.rotation.y += 0.01;
+      this.itemMesh.rotation.y += rotationSpeed;
 
       // Request next frame
       requestAnimationFrame(animate);
@@ -95,7 +132,9 @@ export class Item {
   }
 
   public setPosition(x: number, y: number, z: number): void {
-    this.itemMesh.position.set(x, 1.0, z); // Fixed height of 1.0 units
+    // For ammo items, position them higher off the ground for better visibility
+    const heightOffset = this.type === "ammo" ? 1.5 : 1.0;
+    this.itemMesh.position.set(x, heightOffset, z);
   }
 
   public getPosition(): THREE.Vector3 {
@@ -145,5 +184,14 @@ export class Item {
 
   public getMaxStackSize(): number {
     return this.maxStackSize;
+  }
+
+  // Add a method to check if this is a pistol
+  public isPistol(): boolean {
+    return this.type === "weapon" && this.name === "Pistol";
+  }
+
+  public isAmmo(): boolean {
+    return this.type === "ammo";
   }
 }

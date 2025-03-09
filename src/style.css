@@ -90,7 +90,8 @@ html {
 .hotbar-slot,
 #hotbar-context-menu,
 #command-container,
-#command-input {
+#command-input,
+#ammo-display {
   pointer-events: auto;
 }
 
@@ -625,4 +626,66 @@ html {
 #time-control-feedback.active {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Ammo Display */
+.ammo-display {
+  position: absolute;
+  bottom: 120px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: 2px solid #fff;
+  border-radius: 5px;
+  padding: 8px 15px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  transition: opacity 0.3s ease;
+}
+
+.ammo-display.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Game Messages */
+.game-message {
+  position: fixed;
+  top: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 10px 15px;
+  border-radius: 5px;
+  font-family: "Courier New", monospace;
+  font-size: 1rem;
+  font-weight: bold;
+  opacity: 1;
+  z-index: 100;
+  pointer-events: none;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  border: 1px solid #444;
+  animation: fadeInOut 3s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
 }

@@ -11,6 +11,7 @@ export class UIManager {
   private timeText: HTMLElement | null;
   private timeIcon: HTMLElement | null;
   private damageVignette: HTMLElement | null;
+  private ammoDisplay: HTMLElement | null;
 
   constructor(player: Player) {
     this.player = player;
@@ -22,6 +23,25 @@ export class UIManager {
     this.timeText = document.getElementById("time-text");
     this.timeIcon = document.querySelector(".time-icon");
     this.damageVignette = document.getElementById("damage-vignette");
+    this.ammoDisplay = document.getElementById("ammo-display");
+
+    // Create ammo display if it doesn't exist
+    if (!this.ammoDisplay) {
+      this.createAmmoDisplay();
+    }
+  }
+
+  private createAmmoDisplay(): void {
+    // Create ammo display container
+    this.ammoDisplay = document.createElement("div");
+    this.ammoDisplay.id = "ammo-display";
+    this.ammoDisplay.className = "ammo-display hidden";
+
+    // Add to UI container
+    const uiContainer = document.getElementById("ui-container");
+    if (uiContainer) {
+      uiContainer.appendChild(this.ammoDisplay);
+    }
   }
 
   public setLightingSystem(lightingSystem: LightingSystem): void {
@@ -163,7 +183,37 @@ export class UIManager {
     }
   }
 
+  public updateAmmoDisplay(ammo: number): void {
+    if (!this.ammoDisplay) {
+      this.createAmmoDisplay();
+    }
+
+    if (this.ammoDisplay) {
+      // Show the ammo display
+      this.ammoDisplay.classList.remove("hidden");
+
+      // Update the text
+      this.ammoDisplay.textContent = `Ammo: ${ammo}`;
+
+      // Change color based on ammo level
+      if (ammo === 0) {
+        this.ammoDisplay.style.color = "#ff0000"; // Red for no ammo
+      } else if (ammo < 5) {
+        this.ammoDisplay.style.color = "#ff8800"; // Orange for low ammo
+      } else {
+        this.ammoDisplay.style.color = "#ffffff"; // White for normal
+      }
+    }
+  }
+
+  public hideAmmoDisplay(): void {
+    if (this.ammoDisplay) {
+      this.ammoDisplay.classList.add("hidden");
+    }
+  }
+
   public reset(): void {
     this.update();
+    this.hideAmmoDisplay();
   }
 }
