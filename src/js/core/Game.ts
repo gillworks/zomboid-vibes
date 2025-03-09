@@ -199,6 +199,7 @@ export class Game {
       this.itemManager.update(delta);
       this.world.update(delta);
       this.uiManager.update();
+      this.inputManager.update();
 
       // Update lighting system
       this.lightingSystem.update(delta);

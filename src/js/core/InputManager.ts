@@ -50,59 +50,65 @@ export class InputManager {
       return;
     }
 
-    // Handle time control keys only when the help panel is open
-    if (this.lightingSystem) {
-      const timeControlsHelp = document.getElementById("time-controls-help");
-      const isHelpPanelOpen =
-        timeControlsHelp && !timeControlsHelp.classList.contains("hidden");
-
+    // Handle time control keys when the help panel is open
+    const timeControlsHelp = document.getElementById("time-controls-help");
+    if (
+      timeControlsHelp &&
+      !timeControlsHelp.classList.contains("hidden") &&
+      this.lightingSystem
+    ) {
       // Only process time control keys if the help panel is open
-      if (isHelpPanelOpen) {
-        switch (event.key.toLowerCase()) {
-          case "y": // Toggle time speed
-            this.toggleTimeSpeed();
-            break;
-          case "u": // Set to dawn
-            this.lightingSystem.setTimeOfDay(0.25);
-            console.log("Time set to dawn");
-            this.showTimeControlFeedback("Time set to dawn");
-            break;
-          case "i":
-            // Only set to noon if help panel is open, otherwise toggle inventory
-            this.lightingSystem.setTimeOfDay(0.5);
-            console.log("Time set to noon");
-            this.showTimeControlFeedback("Time set to noon");
-            // Prevent the inventory from toggling when using the time control
-            event.preventDefault();
-            return;
-          case "o": // Set to dusk
-            this.lightingSystem.setTimeOfDay(0.75);
-            console.log("Time set to dusk");
-            this.showTimeControlFeedback("Time set to dusk");
-            break;
-          case "p": // Set to midnight
-            this.lightingSystem.setTimeOfDay(0);
-            console.log("Time set to midnight");
-            this.showTimeControlFeedback("Time set to midnight");
-            break;
-        }
+      switch (event.key.toLowerCase()) {
+        case "y": // Toggle time speed
+          this.toggleTimeSpeed();
+          break;
+        case "u": // Set to dawn
+          this.lightingSystem.setTimeOfDay(0.25);
+          console.log("Time set to dawn");
+          this.showTimeControlFeedback("Time set to dawn");
+          break;
+        case "i":
+          // Only set to noon if help panel is open, otherwise toggle inventory
+          this.lightingSystem.setTimeOfDay(0.5);
+          console.log("Time set to noon");
+          this.showTimeControlFeedback("Time set to noon");
+          // Prevent the inventory from toggling when using the time control
+          event.preventDefault();
+          return;
+        case "o": // Set to dusk
+          this.lightingSystem.setTimeOfDay(0.75);
+          console.log("Time set to dusk");
+          this.showTimeControlFeedback("Time set to dusk");
+          break;
+        case "p": // Set to midnight
+          this.lightingSystem.setTimeOfDay(0);
+          console.log("Time set to midnight");
+          this.showTimeControlFeedback("Time set to midnight");
+          break;
       }
     }
 
     // Handle player movement
     this.handlePlayerMovement();
 
-    // Handle inventory
+    // Handle inventory toggle with 'I' key
     if (event.key.toLowerCase() === "i") {
       // Check if the help panel is open
-      const timeControlsHelp = document.getElementById("time-controls-help");
       const isHelpPanelOpen =
         timeControlsHelp && !timeControlsHelp.classList.contains("hidden");
 
       // Only toggle inventory if the help panel is not open
       if (!isHelpPanelOpen) {
         this.toggleInventory();
+        return;
       }
+    }
+
+    // Handle hotbar key presses (1-3)
+    if (event.key >= "1" && event.key <= "3") {
+      const hotbarIndex = parseInt(event.key) - 1;
+      this.useHotbarItem(hotbarIndex);
+      return;
     }
 
     // Handle attack
@@ -207,6 +213,7 @@ export class InputManager {
     inventory.forEach((item, index) => {
       const slot = document.createElement("div");
       slot.className = "inventory-slot";
+      slot.setAttribute("data-index", index.toString());
 
       if (item) {
         // Get item properties, handling both Item objects and simple objects
@@ -240,9 +247,18 @@ export class InputManager {
         slot.appendChild(itemInfo);
 
         // Highlight equipped item
-        if (item === this.player.getEquippedItem()) {
+        if (
+          item === this.player.getEquippedItem() &&
+          this.player.getActiveHotbarSlot() === -1
+        ) {
           slot.classList.add("selected");
         }
+
+        // Add context menu for hotbar assignment
+        slot.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          this.showHotbarAssignMenu(index, e);
+        });
 
         // Add click event to use/equip item
         slot.addEventListener("click", () => {
@@ -252,6 +268,179 @@ export class InputManager {
 
       inventorySlots.appendChild(slot);
     });
+
+    // Update hotbar display
+    this.updateHotbarDisplay();
+  }
+
+  private showHotbarAssignMenu(
+    inventoryIndex: number,
+    event: MouseEvent
+  ): void {
+    // Remove any existing context menu
+    const existingMenu = document.getElementById("hotbar-context-menu");
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    // Create context menu
+    const menu = document.createElement("div");
+    menu.id = "hotbar-context-menu";
+    menu.style.position = "absolute";
+    menu.style.left = `${event.clientX}px`;
+    menu.style.top = `${event.clientY}px`;
+    menu.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
+    menu.style.border = "1px solid #fff";
+    menu.style.borderRadius = "5px";
+    menu.style.padding = "5px";
+    menu.style.zIndex = "1000";
+
+    // Add options for each hotbar slot
+    for (let i = 0; i < 3; i++) {
+      const option = document.createElement("div");
+      option.textContent = `Assign to Slot ${i + 1}`;
+      option.style.padding = "5px 10px";
+      option.style.cursor = "pointer";
+      option.style.borderBottom = i < 2 ? "1px solid #555" : "none";
+
+      option.addEventListener("mouseover", () => {
+        option.style.backgroundColor = "rgba(139, 0, 0, 0.7)";
+      });
+
+      option.addEventListener("mouseout", () => {
+        option.style.backgroundColor = "transparent";
+      });
+
+      option.addEventListener("click", () => {
+        this.player.moveToHotbar(inventoryIndex, i);
+        menu.remove();
+        this.populateInventory(); // Refresh inventory display
+      });
+
+      menu.appendChild(option);
+    }
+
+    // Add event listener to close menu when clicking elsewhere
+    document.addEventListener(
+      "click",
+      () => {
+        menu.remove();
+      },
+      { once: true }
+    );
+
+    // Add menu to the document
+    document.body.appendChild(menu);
+  }
+
+  private updateHotbarDisplay(): void {
+    const hotbar = this.player.getHotbar();
+    const activeSlot = this.player.getActiveHotbarSlot();
+
+    // Update each hotbar slot
+    for (let i = 0; i < hotbar.length; i++) {
+      const slotElement = document.querySelector(
+        `.hotbar-slot[data-slot="${i}"]`
+      );
+      if (!slotElement) continue;
+
+      // Clear existing content except the hotbar key
+      const keyElement = slotElement.querySelector(".hotbar-key");
+      slotElement.innerHTML = "";
+      if (keyElement) {
+        slotElement.appendChild(keyElement);
+      }
+
+      // Update active state
+      if (i === activeSlot) {
+        slotElement.classList.add("active");
+      } else {
+        slotElement.classList.remove("active");
+      }
+
+      const item = hotbar[i];
+      if (item) {
+        // Get item properties
+        const itemName = item.getName ? item.getName() : item.name;
+        const itemType = item.getType ? item.getType() : item.type;
+        const itemQuantity = item.getQuantity
+          ? item.getQuantity()
+          : item.quantity || 1;
+        const isStackable = item.isStackable
+          ? item.isStackable()
+          : itemType !== "weapon";
+
+        // Create item info container
+        const itemInfo = document.createElement("div");
+        itemInfo.className = "hotbar-item-info";
+
+        // Add item name
+        const itemNameElement = document.createElement("div");
+        itemNameElement.className = "hotbar-item-name";
+        itemNameElement.textContent = itemName;
+        itemInfo.appendChild(itemNameElement);
+
+        // Add quantity for stackable items with more than 1 item
+        if (isStackable && itemQuantity > 1) {
+          const itemQuantityElement = document.createElement("div");
+          itemQuantityElement.className = "hotbar-item-quantity";
+          itemQuantityElement.textContent = `x${itemQuantity}`;
+          itemInfo.appendChild(itemQuantityElement);
+        }
+
+        slotElement.appendChild(itemInfo);
+      }
+    }
+  }
+
+  private useHotbarItem(index: number): void {
+    const hotbar = this.player.getHotbar();
+    const item = hotbar[index];
+
+    if (!item) return;
+
+    // Get item type and other properties
+    const itemType = item.getType ? item.getType() : item.type;
+    const itemName = item.getName ? item.getName() : item.name;
+    const itemValue = item.getValue ? item.getValue() : item.value;
+    const itemQuantity = item.getQuantity
+      ? item.getQuantity()
+      : item.quantity || 1;
+
+    // Handle different item types
+    switch (itemType) {
+      case "weapon":
+        this.player.equipHotbarItem(index);
+        break;
+      case "food":
+        // Check if it's a water bottle
+        if (itemName === "Water Bottle") {
+          this.player.drink(itemValue);
+        } else {
+          this.player.eat(itemValue);
+        }
+
+        // For stackable items, only remove one from the stack
+        if (itemQuantity > 1) {
+          this.player.removeFromHotbar(index, 1);
+        } else {
+          this.player.removeFromHotbar(index);
+        }
+        break;
+      case "medkit":
+        this.player.heal(itemValue);
+
+        // For stackable items, only remove one from the stack
+        if (itemQuantity > 1) {
+          this.player.removeFromHotbar(index, 1);
+        } else {
+          this.player.removeFromHotbar(index);
+        }
+        break;
+    }
+
+    // Update hotbar display
+    this.updateHotbarDisplay();
   }
 
   private useItem(index: number): void {
@@ -312,8 +501,7 @@ export class InputManager {
 
     if (inventoryButton && inventoryPanel && closeInventoryButton) {
       inventoryButton.addEventListener("click", () => {
-        inventoryPanel.classList.remove("hidden");
-        this.populateInventory();
+        this.toggleInventory();
       });
 
       closeInventoryButton.addEventListener("click", () => {
@@ -331,8 +519,7 @@ export class InputManager {
         timeControlsHelp.classList.toggle("hidden");
       });
 
-      helpCloseButton.addEventListener("click", (e) => {
-        e.stopPropagation();
+      helpCloseButton.addEventListener("click", () => {
         timeControlsHelp.classList.add("hidden");
       });
     }
@@ -347,6 +534,15 @@ export class InputManager {
         }
       });
     }
+
+    // Hotbar slot click events
+    const hotbarSlots = document.querySelectorAll(".hotbar-slot");
+    hotbarSlots.forEach((slot) => {
+      slot.addEventListener("click", () => {
+        const slotIndex = parseInt(slot.getAttribute("data-slot") || "0");
+        this.useHotbarItem(slotIndex);
+      });
+    });
   }
 
   // Add a method to show feedback when time controls are used
@@ -402,5 +598,12 @@ export class InputManager {
         this.showTimeControlFeedback("Time controls closed");
       }
     }
+  }
+
+  public update(): void {
+    this.handlePlayerMovement();
+
+    // Update hotbar display (to keep it in sync with the game state)
+    this.updateHotbarDisplay();
   }
 }

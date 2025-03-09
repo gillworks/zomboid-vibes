@@ -26,7 +26,10 @@ export class Player {
   private thirst: number = 100;
   private inventory: any[] = [];
   private maxInventorySlots: number = 16;
+  private hotbar: any[] = [null, null, null]; // Hotbar with 3 slots
+  private maxHotbarSlots: number = 3; // Number of hotbar slots
   private equippedItem: any = null;
+  private activeHotbarSlot: number = -1; // Currently active hotbar slot (-1 means none)
 
   // Add references to limbs for animation
   private leftLeg!: THREE.Group;
@@ -70,9 +73,14 @@ export class Player {
 
     this.scene.add(this.playerGroup);
 
-    // Initialize inventory with empty slots
+    // Initialize inventory slots
     for (let i = 0; i < this.maxInventorySlots; i++) {
       this.inventory.push(null);
+    }
+
+    // Initialize hotbar slots
+    for (let i = 0; i < this.maxHotbarSlots; i++) {
+      this.hotbar[i] = null;
     }
 
     // Set initial position to the center of a road intersection
@@ -446,7 +454,47 @@ export class Player {
     console.log("Item is stackable:", isItemStackable);
 
     if (isItemStackable) {
-      // Look for existing stack of the same item type and name
+      // Look for existing stack of the same item type and name in hotbar first
+      const existingHotbarStackIndex = this.hotbar.findIndex(
+        (slot) =>
+          slot !== null &&
+          (slot.getType ? slot.getType() : slot.type) ===
+            (item.getType ? item.getType() : item.type) &&
+          (slot.getName ? slot.getName() : slot.name) ===
+            (item.getName ? item.getName() : item.name) &&
+          (slot.getQuantity
+            ? slot.getQuantity() < slot.getMaxStackSize()
+            : true)
+      );
+
+      if (existingHotbarStackIndex !== -1) {
+        // Add to existing stack in hotbar
+        if (this.hotbar[existingHotbarStackIndex].incrementQuantity) {
+          this.hotbar[existingHotbarStackIndex].incrementQuantity();
+          console.log("Incremented quantity of existing hotbar stack");
+        } else {
+          // For simple objects, add a quantity property if it doesn't exist
+          if (!this.hotbar[existingHotbarStackIndex].quantity) {
+            this.hotbar[existingHotbarStackIndex].quantity = 1;
+          }
+          this.hotbar[existingHotbarStackIndex].quantity++;
+          console.log(
+            "Incremented quantity of existing hotbar stack (simple object)"
+          );
+        }
+
+        // Remove the item from the scene if it has that method
+        if (item.removeFromScene) {
+          item.removeFromScene();
+          console.log("Removed item from scene (stacked in hotbar)");
+        } else {
+          console.log("Item has no removeFromScene method (stacked in hotbar)");
+        }
+
+        return true;
+      }
+
+      // Look for existing stack of the same item type and name in main inventory
       const existingStackIndex = this.inventory.findIndex(
         (slot) =>
           slot !== null &&
@@ -487,7 +535,31 @@ export class Player {
       }
     }
 
-    // If not stackable or no existing stack found, find an empty slot
+    // Check for empty hotbar slot first
+    const emptyHotbarSlot = this.hotbar.findIndex((slot) => slot === null);
+    if (emptyHotbarSlot !== -1) {
+      // For simple objects, add quantity property if it doesn't exist
+      if (!item.quantity && !item.getQuantity) {
+        item.quantity = 1;
+        console.log("Added quantity property to simple object");
+      }
+
+      // Add to hotbar
+      this.hotbar[emptyHotbarSlot] = item;
+      console.log("Added item to empty hotbar slot:", emptyHotbarSlot);
+
+      // Remove the item from the scene if it has that method
+      if (item.removeFromScene) {
+        item.removeFromScene();
+        console.log("Removed item from scene (new hotbar slot)");
+      } else {
+        console.log("Item has no removeFromScene method (new hotbar slot)");
+      }
+
+      return true;
+    }
+
+    // If not stackable or no existing stack found, find an empty slot in main inventory
     const emptySlot = this.inventory.findIndex((slot) => slot === null);
     console.log("Empty slot index:", emptySlot);
 
@@ -558,6 +630,54 @@ export class Player {
     return null;
   }
 
+  public removeFromHotbar(index: number, quantity: number = 1): any {
+    if (
+      index >= 0 &&
+      index < this.hotbar.length &&
+      this.hotbar[index] !== null
+    ) {
+      const item = this.hotbar[index];
+
+      // Check if the item has a quantity property or method
+      const itemQuantity = item.getQuantity
+        ? item.getQuantity()
+        : item.quantity || 1;
+
+      // If we're removing less than the total quantity
+      if (quantity < itemQuantity) {
+        // Decrement the quantity
+        if (item.decrementQuantity) {
+          item.decrementQuantity(quantity);
+        } else {
+          item.quantity = (item.quantity || 1) - quantity;
+        }
+
+        // Create a new simple object with the removed quantity
+        const removedItem = {
+          type: item.getType ? item.getType() : item.type,
+          name: item.getName ? item.getName() : item.name,
+          value: item.getValue ? item.getValue() : item.value,
+          quantity: quantity,
+        };
+
+        return removedItem;
+      } else {
+        // Remove the entire stack
+        this.hotbar[index] = null;
+
+        // If this was the active hotbar slot, clear it
+        if (this.activeHotbarSlot === index) {
+          this.activeHotbarSlot = -1;
+          this.equippedItem = null;
+        }
+
+        return item;
+      }
+    }
+
+    return null;
+  }
+
   public equipItem(index: number): void {
     if (
       index >= 0 &&
@@ -566,10 +686,88 @@ export class Player {
     ) {
       // Store the reference to the item
       this.equippedItem = this.inventory[index];
-
-      // If it's a stackable item with multiple quantities, we don't need to do anything special
-      // The equipped item will reference the stack in the inventory
+      this.activeHotbarSlot = -1; // Clear active hotbar slot
     }
+  }
+
+  public equipHotbarItem(index: number): void {
+    if (
+      index >= 0 &&
+      index < this.hotbar.length &&
+      this.hotbar[index] !== null
+    ) {
+      // If this slot is already active, deactivate it
+      if (this.activeHotbarSlot === index) {
+        this.activeHotbarSlot = -1;
+        this.equippedItem = null;
+      } else {
+        // Store the reference to the item
+        this.equippedItem = this.hotbar[index];
+        this.activeHotbarSlot = index;
+      }
+    }
+  }
+
+  public moveToHotbar(inventoryIndex: number, hotbarIndex: number): boolean {
+    if (
+      inventoryIndex >= 0 &&
+      inventoryIndex < this.inventory.length &&
+      this.inventory[inventoryIndex] !== null &&
+      hotbarIndex >= 0 &&
+      hotbarIndex < this.hotbar.length
+    ) {
+      // If hotbar slot is occupied, swap items
+      if (this.hotbar[hotbarIndex] !== null) {
+        const hotbarItem = this.hotbar[hotbarIndex];
+        this.hotbar[hotbarIndex] = this.inventory[inventoryIndex];
+        this.inventory[inventoryIndex] = hotbarItem;
+
+        // Update equipped item reference if needed
+        if (this.activeHotbarSlot === hotbarIndex) {
+          this.equippedItem = this.hotbar[hotbarIndex];
+        }
+      } else {
+        // Move item to empty hotbar slot
+        this.hotbar[hotbarIndex] = this.inventory[inventoryIndex];
+        this.inventory[inventoryIndex] = null;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  public moveFromHotbar(hotbarIndex: number, inventoryIndex: number): boolean {
+    if (
+      hotbarIndex >= 0 &&
+      hotbarIndex < this.hotbar.length &&
+      this.hotbar[hotbarIndex] !== null &&
+      inventoryIndex >= 0 &&
+      inventoryIndex < this.inventory.length
+    ) {
+      // If inventory slot is occupied, swap items
+      if (this.inventory[inventoryIndex] !== null) {
+        const inventoryItem = this.inventory[inventoryIndex];
+        this.inventory[inventoryIndex] = this.hotbar[hotbarIndex];
+        this.hotbar[hotbarIndex] = inventoryItem;
+
+        // Update equipped item reference if needed
+        if (this.activeHotbarSlot === hotbarIndex) {
+          this.equippedItem = this.hotbar[hotbarIndex];
+        }
+      } else {
+        // Move item to empty inventory slot
+        this.inventory[inventoryIndex] = this.hotbar[hotbarIndex];
+        this.hotbar[hotbarIndex] = null;
+
+        // If this was the active hotbar slot, clear it
+        if (this.activeHotbarSlot === hotbarIndex) {
+          this.activeHotbarSlot = -1;
+          this.equippedItem = null;
+        }
+      }
+      return true;
+    }
+    return false;
   }
 
   public getPlayerGroup(): THREE.Group {
@@ -597,7 +795,15 @@ export class Player {
   }
 
   public getInventory(): any[] {
-    return [...this.inventory];
+    return this.inventory;
+  }
+
+  public getHotbar(): any[] {
+    return this.hotbar;
+  }
+
+  public getActiveHotbarSlot(): number {
+    return this.activeHotbarSlot;
   }
 
   public getEquippedItem(): any {
@@ -617,15 +823,25 @@ export class Player {
   }
 
   public reset(): void {
-    // Reset player state
     this.health = 100;
     this.hunger = 100;
     this.thirst = 100;
-    this.inventory = Array(this.maxInventorySlots).fill(null);
+
+    // Clear inventory
+    for (let i = 0; i < this.maxInventorySlots; i++) {
+      this.inventory[i] = null;
+    }
+
+    // Clear hotbar
+    for (let i = 0; i < this.maxHotbarSlots; i++) {
+      this.hotbar[i] = null;
+    }
+
     this.equippedItem = null;
+    this.activeHotbarSlot = -1;
+    this.causeOfDeath = "";
     this.timeSinceLastAttack = 0;
     this.isAttacking = false;
-    this.causeOfDeath = ""; // Reset cause of death
 
     // Reset position
     this.playerGroup.position.set(0, 0, 0);
