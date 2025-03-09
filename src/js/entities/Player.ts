@@ -85,7 +85,7 @@ export class Player {
 
     // Set initial position to the center of a road intersection
     // This ensures the player starts in an open area without collisions
-    this.playerGroup.position.set(0, 0, 0);
+    this.playerGroup.position.set(0, 0.25, 0); // Raise the player to prevent feet sinking into ground
 
     // Update camera position immediately
     this.updateCameraPosition();
@@ -856,7 +856,7 @@ export class Player {
     this.isAttacking = false;
 
     // Reset position
-    this.playerGroup.position.set(0, 0, 0);
+    this.playerGroup.position.set(0, 0.25, 0); // Raise the player by to prevent feet sinking into ground
     this.playerGroup.rotation.set(0, 0, 0);
 
     // Reset animation
@@ -987,7 +987,8 @@ export class Player {
             .add(knockbackDirection.multiplyScalar(knockbackDistance));
 
           // Set the zombie's new position with knockback
-          zombie.setPosition(newPosition.x, newPosition.y, newPosition.z);
+          // Maintain the 0.4 y-position to keep zombie feet above ground
+          zombie.setPosition(newPosition.x, 0.4, newPosition.z);
           console.log(
             "Applied knockback to zombie:",
             knockbackDistance,

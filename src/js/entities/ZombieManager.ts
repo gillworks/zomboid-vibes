@@ -66,7 +66,7 @@ export class ZombieManager {
     // Set the world reference for collision detection
     zombie.setWorld(this.world);
 
-    zombie.setPosition(clampedX, 0, clampedZ);
+    zombie.setPosition(clampedX, 0.2, clampedZ);
 
     // Add to the list
     this.zombies.push(zombie);
