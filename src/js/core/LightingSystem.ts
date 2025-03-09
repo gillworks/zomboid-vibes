@@ -194,7 +194,7 @@ export class LightingSystem {
     const glassMaterial = new THREE.MeshStandardMaterial({
       color: 0xffffcc,
       emissive: 0xffffcc,
-      emissiveIntensity: 1.0, // Increased from 0.7 to 1.0 for brighter appearance
+      emissiveIntensity: 5.0, // Increased from 0.7 to 1.0 for brighter appearance
       transparent: true,
       opacity: 0.8,
     });
@@ -637,7 +637,7 @@ export class LightingSystem {
     }
 
     // Apply lamp intensity
-    const actualLampIntensity = 3.0 * lampIntensity; // Increased base intensity from 2.0 to 3.0
+    const actualLampIntensity = 10.0 * lampIntensity; // Increased base intensity from 2.0 to 3.0
 
     // Update all street lamp lights
     for (const light of this.streetLampLights) {
