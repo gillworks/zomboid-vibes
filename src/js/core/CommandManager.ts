@@ -96,6 +96,74 @@ export class CommandManager {
       },
     });
 
+    // Register time command
+    this.registerCommand({
+      name: "time",
+      description:
+        "Sets the time of day in 24-hour format (e.g., /time 1400 for 2pm)",
+      execute: (args) => {
+        if (!this.lightingSystem) return;
+
+        if (args.length === 0) {
+          // If no time provided, show current time
+          const currentTime = this.lightingSystem.getTimeOfDay();
+          const hours = Math.floor(currentTime * 24);
+          const minutes = Math.floor((currentTime * 24 * 60) % 60);
+          const formattedTime = `${hours.toString().padStart(2, "0")}${minutes
+            .toString()
+            .padStart(2, "0")}`;
+          this.showCommandFeedback(
+            `Current time: ${formattedTime} (${this.formatTimeForDisplay(
+              hours,
+              minutes
+            )})`
+          );
+          return;
+        }
+
+        // Parse the time argument
+        const timeArg = args[0];
+        if (!/^\d{1,4}$/.test(timeArg)) {
+          this.showCommandFeedback(
+            "Invalid time format. Use 24-hour format (e.g., 1400 for 2pm)"
+          );
+          return;
+        }
+
+        // Parse hours and minutes
+        let hours, minutes;
+        if (timeArg.length <= 2) {
+          // If only hours provided (e.g., "14" or "3")
+          hours = parseInt(timeArg);
+          minutes = 0;
+        } else {
+          // If hours and minutes provided (e.g., "1430" or "0305")
+          const paddedTime = timeArg.padStart(4, "0");
+          hours = parseInt(paddedTime.substring(0, 2));
+          minutes = parseInt(paddedTime.substring(2, 4));
+        }
+
+        // Validate hours and minutes
+        if (hours < 0 || hours >= 24 || minutes < 0 || minutes >= 60) {
+          this.showCommandFeedback(
+            "Invalid time. Hours must be 0-23 and minutes must be 0-59."
+          );
+          return;
+        }
+
+        // Convert to time of day value (0-1)
+        const timeOfDay = (hours + minutes / 60) / 24;
+
+        // Set the time
+        this.lightingSystem.setTimeOfDay(timeOfDay);
+
+        // Format time for display
+        const displayTime = this.formatTimeForDisplay(hours, minutes);
+
+        this.showCommandFeedback(`Time set to ${displayTime}`);
+      },
+    });
+
     // Register help command
     this.registerCommand({
       name: "help",
@@ -240,5 +308,13 @@ export class CommandManager {
     setTimeout(() => {
       feedbackElement.classList.remove("active");
     }, 3000);
+  }
+
+  private formatTimeForDisplay(hours: number, minutes: number): string {
+    // Convert 24-hour time to 12-hour format with AM/PM
+    const period = hours >= 12 ? "PM" : "AM";
+    const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+    const displayMinutes = minutes.toString().padStart(2, "0");
+    return `${displayHours}:${displayMinutes} ${period}`;
   }
 }
