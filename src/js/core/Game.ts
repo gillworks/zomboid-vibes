@@ -8,6 +8,7 @@ import { UIManager } from "../ui/UIManager";
 import { ZombieManager } from "../entities/ZombieManager";
 import { ItemManager } from "../entities/ItemManager";
 import { LightingSystem } from "./LightingSystem";
+import { CommandManager } from "./CommandManager";
 
 export class Game {
   private scene: THREE.Scene;
@@ -22,6 +23,7 @@ export class Game {
   private zombieManager!: ZombieManager;
   private itemManager!: ItemManager;
   private lightingSystem!: LightingSystem;
+  private commandManager!: CommandManager;
 
   private isGameOver: boolean = false;
   private isLoading: boolean = true;
@@ -158,7 +160,11 @@ export class Game {
     this.lightingSystem = new LightingSystem(this.scene, this.world);
     this.lightingSystem.createStreetLamps();
 
-    // Initialize the input manager
+    // Create the command manager
+    this.commandManager = new CommandManager();
+    this.commandManager.setLightingSystem(this.lightingSystem);
+
+    // Set up input manager
     this.inputManager = new InputManager(this.player);
     this.inputManager.setZombieManager(this.zombieManager);
     this.inputManager.setLightingSystem(this.lightingSystem);

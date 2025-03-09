@@ -9,6 +9,7 @@ export class LightingSystem {
   private dayDuration: number = 600; // 10 minutes in seconds
   private timeOfDay: number = 0; // 0 to 1 (0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset)
   private daySpeed: number = 1 / this.dayDuration; // How fast the day progresses
+  private isTimeFrozen: boolean = false; // Whether time is frozen
 
   // Lighting objects
   private ambientLight!: THREE.AmbientLight;
@@ -293,8 +294,10 @@ export class LightingSystem {
   }
 
   public update(delta: number): void {
-    // Update time of day
-    this.timeOfDay = (this.timeOfDay + delta * this.daySpeed) % 1;
+    // Update time of day only if not frozen
+    if (!this.isTimeFrozen) {
+      this.timeOfDay = (this.timeOfDay + delta * this.daySpeed) % 1;
+    }
 
     // Update lighting based on time of day
     this.updateLighting(delta);
@@ -661,8 +664,16 @@ export class LightingSystem {
   }
 
   public setTimeOfDay(time: number): void {
-    this.timeOfDay = time % 1;
+    this.timeOfDay = Math.max(0, Math.min(1, time));
     this.updateLighting(0);
+  }
+
+  public setTimeFrozen(frozen: boolean): void {
+    this.isTimeFrozen = frozen;
+  }
+
+  public isTimeFreezed(): boolean {
+    return this.isTimeFrozen;
   }
 
   public setDayDuration(seconds: number): void {

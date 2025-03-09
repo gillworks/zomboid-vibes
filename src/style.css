@@ -88,7 +88,9 @@ html {
 .inventory-slot,
 #hotbar-container,
 .hotbar-slot,
-#hotbar-context-menu {
+#hotbar-context-menu,
+#command-container,
+#command-input {
   pointer-events: auto;
 }
 
@@ -502,4 +504,120 @@ html {
 
 #hotbar-context-menu div:hover {
   background-color: rgba(139, 0, 0, 0.7);
+}
+
+/* Command Input */
+#command-container {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 300px;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+#command-input-wrapper {
+  display: flex;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: 2px solid #fff;
+  border-radius: 5px;
+  padding: 5px 10px;
+}
+
+.command-prefix {
+  color: #8b0000;
+  font-weight: bold;
+  font-size: 18px;
+  margin-right: 5px;
+}
+
+#command-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: "Courier New", monospace;
+  font-size: 16px;
+  outline: none;
+}
+
+#command-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+#command-suggestions {
+  margin-top: 5px;
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 1px solid #555;
+  border-radius: 3px;
+  max-height: 150px;
+  overflow-y: auto;
+  display: none;
+}
+
+.command-suggestion {
+  padding: 5px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #333;
+}
+
+.command-suggestion:last-child {
+  border-bottom: none;
+}
+
+.command-suggestion:hover,
+.command-suggestion.selected {
+  background-color: rgba(139, 0, 0, 0.7);
+}
+
+/* Command Feedback */
+#command-feedback {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 1px solid #8b0000;
+  border-radius: 5px;
+  padding: 10px 15px;
+  color: #fff;
+  font-size: 16px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  white-space: pre-line;
+  text-align: center;
+  max-width: 80%;
+}
+
+#command-feedback.active {
+  opacity: 1;
+}
+
+/* Time Control Feedback */
+#time-control-feedback {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #ffdb58;
+  padding: 10px 15px;
+  border-radius: 5px;
+  font-family: "Courier New", monospace;
+  font-size: 1rem;
+  font-weight: bold;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 100;
+  pointer-events: none;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  border: 1px solid #444;
+}
+
+#time-control-feedback.active {
+  opacity: 1;
+  transform: translateY(0);
 }

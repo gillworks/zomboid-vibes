@@ -21,6 +21,20 @@
         <!-- Damage vignette effect -->
         <div id="damage-vignette" class="hidden"></div>
 
+        <!-- Command input -->
+        <div id="command-container" class="hidden">
+          <div id="command-input-wrapper">
+            <span class="command-prefix">/</span>
+            <input
+              type="text"
+              id="command-input"
+              placeholder="Type a command..."
+              autocomplete="off"
+            />
+          </div>
+          <div id="command-suggestions"></div>
+        </div>
+
         <div class="bar-container">
           <div class="bar-label">Health</div>
           <div id="health-bar-container">
