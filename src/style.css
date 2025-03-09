@@ -199,6 +199,28 @@ html {
   cursor: pointer;
 }
 
+.item-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}
+
+.item-name {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.item-quantity {
+  font-size: 12px;
+  color: #aaa;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
 .inventory-slot.selected {
   border-color: #8b0000;
   box-shadow: 0 0 10px rgba(139, 0, 0, 0.7);

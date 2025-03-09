@@ -2,6 +2,7 @@ import * as THREE from "three";
 import * as TWEEN from "@tweenjs/tween.js";
 import { Zombie } from "./Zombie";
 import { World } from "../core/World";
+import { Item } from "./Item";
 
 export class Player {
   private scene: THREE.Scene;
@@ -437,22 +438,125 @@ export class Player {
   }
 
   public addToInventory(item: any): boolean {
-    // Find an empty slot in the inventory
+    console.log("Adding item to inventory:", item);
+
+    // Check if the item is stackable
+    // If it's an Item object, use its isStackable method
+    // Otherwise, determine stackability based on type
+    const isItemStackable = item.isStackable
+      ? item.isStackable()
+      : item.type !== "weapon";
+
+    console.log("Item is stackable:", isItemStackable);
+
+    if (isItemStackable) {
+      // Look for existing stack of the same item type and name
+      const existingStackIndex = this.inventory.findIndex(
+        (slot) =>
+          slot !== null &&
+          (slot.getType ? slot.getType() : slot.type) ===
+            (item.getType ? item.getType() : item.type) &&
+          (slot.getName ? slot.getName() : slot.name) ===
+            (item.getName ? item.getName() : item.name) &&
+          (slot.getQuantity
+            ? slot.getQuantity() < slot.getMaxStackSize()
+            : true)
+      );
+
+      console.log("Existing stack index:", existingStackIndex);
+
+      if (existingStackIndex !== -1) {
+        // Add to existing stack
+        if (this.inventory[existingStackIndex].incrementQuantity) {
+          this.inventory[existingStackIndex].incrementQuantity();
+          console.log("Incremented quantity of existing stack");
+        } else {
+          // For simple objects, add a quantity property if it doesn't exist
+          if (!this.inventory[existingStackIndex].quantity) {
+            this.inventory[existingStackIndex].quantity = 1;
+          }
+          this.inventory[existingStackIndex].quantity++;
+          console.log("Incremented quantity of existing stack (simple object)");
+        }
+
+        // Remove the item from the scene if it has that method
+        if (item.removeFromScene) {
+          item.removeFromScene();
+          console.log("Removed item from scene (stacked)");
+        } else {
+          console.log("Item has no removeFromScene method (stacked)");
+        }
+
+        return true;
+      }
+    }
+
+    // If not stackable or no existing stack found, find an empty slot
     const emptySlot = this.inventory.findIndex((slot) => slot === null);
+    console.log("Empty slot index:", emptySlot);
 
     if (emptySlot !== -1) {
+      // For simple objects, add quantity property if it doesn't exist
+      if (!item.quantity && !item.getQuantity) {
+        item.quantity = 1;
+        console.log("Added quantity property to simple object");
+      }
+
+      // Add to inventory
       this.inventory[emptySlot] = item;
+      console.log("Added item to empty slot:", emptySlot);
+
+      // Remove the item from the scene if it has that method
+      if (item.removeFromScene) {
+        item.removeFromScene();
+        console.log("Removed item from scene (new slot)");
+      } else {
+        console.log("Item has no removeFromScene method (new slot)");
+      }
+
       return true;
     }
 
+    console.log("Inventory is full, couldn't add item");
     return false; // Inventory is full
   }
 
-  public removeFromInventory(index: number): any {
-    if (index >= 0 && index < this.inventory.length) {
+  public removeFromInventory(index: number, quantity: number = 1): any {
+    if (
+      index >= 0 &&
+      index < this.inventory.length &&
+      this.inventory[index] !== null
+    ) {
       const item = this.inventory[index];
-      this.inventory[index] = null;
-      return item;
+
+      // Check if the item has a quantity property or method
+      const itemQuantity = item.getQuantity
+        ? item.getQuantity()
+        : item.quantity || 1;
+
+      // If we're removing less than the total quantity
+      if (quantity < itemQuantity) {
+        // Decrement the quantity
+        if (item.decrementQuantity) {
+          item.decrementQuantity(quantity);
+        } else {
+          item.quantity = (item.quantity || 1) - quantity;
+        }
+
+        // Create a new simple object with the removed quantity
+        const removedItem = {
+          type: item.getType ? item.getType() : item.type,
+          name: item.getName ? item.getName() : item.name,
+          value: item.getValue ? item.getValue() : item.value,
+          quantity: quantity,
+        };
+
+        return removedItem;
+      } else {
+        // Remove the entire stack
+        this.inventory[index] = null;
+        return item;
+      }
     }
 
     return null;
@@ -464,7 +568,11 @@ export class Player {
       index < this.inventory.length &&
       this.inventory[index] !== null
     ) {
+      // Store the reference to the item
       this.equippedItem = this.inventory[index];
+
+      // If it's a stackable item with multiple quantities, we don't need to do anything special
+      // The equipped item will reference the stack in the inventory
     }
   }
 

@@ -161,20 +161,17 @@ export class ItemManager {
 
   private pickupItem(index: number): void {
     const item = this.items[index];
+    console.log("Picking up item:", item);
 
-    // Add to player inventory
-    const added = this.player.addToInventory({
-      type: item.getType(),
-      name: item.getName(),
-      value: item.getValue(),
-    });
+    // Add the actual Item object to player inventory
+    const added = this.player.addToInventory(item);
+    console.log("Item added to inventory:", added);
 
     if (added) {
-      // Remove from scene
-      item.removeFromScene();
-
-      // Remove from list
+      // Item is now managed by the inventory system
+      // Remove from list (but don't remove from scene yet, as that's handled in addToInventory)
       this.items.splice(index, 1);
+      console.log("Item removed from items list");
     }
   }
 

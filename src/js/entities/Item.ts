@@ -7,6 +7,8 @@ export class Item {
   private type: string;
   private name: string;
   private value: number;
+  private quantity: number = 1;
+  private maxStackSize: number = 10;
 
   constructor(
     scene: THREE.Scene,
@@ -101,6 +103,7 @@ export class Item {
   }
 
   public removeFromScene(): void {
+    console.log("Removing item from scene:", this.name);
     this.scene.remove(this.itemMesh);
   }
 
@@ -114,5 +117,33 @@ export class Item {
 
   public getValue(): number {
     return this.value;
+  }
+
+  public getQuantity(): number {
+    return this.quantity;
+  }
+
+  public setQuantity(quantity: number): void {
+    this.quantity = quantity;
+  }
+
+  public incrementQuantity(amount: number = 1): void {
+    this.quantity += amount;
+  }
+
+  public decrementQuantity(amount: number = 1): boolean {
+    if (this.quantity >= amount) {
+      this.quantity -= amount;
+      return true;
+    }
+    return false;
+  }
+
+  public isStackable(): boolean {
+    return this.type !== "weapon";
+  }
+
+  public getMaxStackSize(): number {
+    return this.maxStackSize;
   }
 }

@@ -209,7 +209,35 @@ export class InputManager {
       slot.className = "inventory-slot";
 
       if (item) {
-        slot.textContent = item.name;
+        // Get item properties, handling both Item objects and simple objects
+        const itemName = item.getName ? item.getName() : item.name;
+        const itemType = item.getType ? item.getType() : item.type;
+        const itemQuantity = item.getQuantity
+          ? item.getQuantity()
+          : item.quantity || 1;
+        const isStackable = item.isStackable
+          ? item.isStackable()
+          : itemType !== "weapon";
+
+        // Create a container for the item name and quantity
+        const itemInfo = document.createElement("div");
+        itemInfo.className = "item-info";
+
+        // Add item name
+        const itemNameElement = document.createElement("div");
+        itemNameElement.className = "item-name";
+        itemNameElement.textContent = itemName;
+        itemInfo.appendChild(itemNameElement);
+
+        // Add quantity for stackable items with more than 1 item
+        if (isStackable && itemQuantity > 1) {
+          const itemQuantityElement = document.createElement("div");
+          itemQuantityElement.className = "item-quantity";
+          itemQuantityElement.textContent = `x${itemQuantity}`;
+          itemInfo.appendChild(itemQuantityElement);
+        }
+
+        slot.appendChild(itemInfo);
 
         // Highlight equipped item
         if (item === this.player.getEquippedItem()) {
@@ -232,23 +260,43 @@ export class InputManager {
 
     if (!item) return;
 
+    // Get item type and other properties, handling both Item objects and simple objects
+    const itemType = item.getType ? item.getType() : item.type;
+    const itemName = item.getName ? item.getName() : item.name;
+    const itemValue = item.getValue ? item.getValue() : item.value;
+    const itemQuantity = item.getQuantity
+      ? item.getQuantity()
+      : item.quantity || 1;
+
     // Handle different item types
-    switch (item.type) {
+    switch (itemType) {
       case "weapon":
         this.player.equipItem(index);
         break;
       case "food":
         // Check if it's a water bottle
-        if (item.name === "Water Bottle") {
-          this.player.drink(item.value);
+        if (itemName === "Water Bottle") {
+          this.player.drink(itemValue);
         } else {
-          this.player.eat(item.value);
+          this.player.eat(itemValue);
         }
-        this.player.removeFromInventory(index);
+
+        // For stackable items, only remove one from the stack
+        if (itemQuantity > 1) {
+          this.player.removeFromInventory(index, 1);
+        } else {
+          this.player.removeFromInventory(index);
+        }
         break;
       case "medkit":
-        this.player.heal(item.value);
-        this.player.removeFromInventory(index);
+        this.player.heal(itemValue);
+
+        // For stackable items, only remove one from the stack
+        if (itemQuantity > 1) {
+          this.player.removeFromInventory(index, 1);
+        } else {
+          this.player.removeFromInventory(index);
+        }
         break;
     }
 
