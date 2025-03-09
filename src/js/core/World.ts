@@ -492,7 +492,11 @@ export class World {
     }
 
     // Add road markings (white lines)
-    const linesMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const linesMaterial = new THREE.MeshStandardMaterial({
+      color: 0xeeeeee, // Slightly off-white
+      roughness: 0.7, // Increase roughness
+      metalness: 0.0, // No metalness for road paint
+    });
 
     // Horizontal road markings
     for (let i = 0; i <= numBlocksZ; i++) {
@@ -526,7 +530,8 @@ export class World {
 
           const lineGeometry = new THREE.BoxGeometry(dashLength, 0.05, 0.3);
           const line = new THREE.Mesh(lineGeometry, linesMaterial);
-          line.position.set(dashX, 0.1, z);
+          line.position.set(dashX, 0.11, z);
+          line.receiveShadow = true;
           this.roads.add(line);
         }
       }
@@ -564,7 +569,8 @@ export class World {
 
           const lineGeometry = new THREE.BoxGeometry(0.3, 0.05, dashLength);
           const line = new THREE.Mesh(lineGeometry, linesMaterial);
-          line.position.set(x, 0.1, dashZ);
+          line.position.set(x, 0.11, dashZ);
+          line.receiveShadow = true;
           this.roads.add(line);
         }
       }
