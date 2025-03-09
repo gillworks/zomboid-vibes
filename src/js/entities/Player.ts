@@ -595,11 +595,11 @@ export class Player {
     this.timeSinceLastAttack = 0;
     this.isAttacking = true;
 
-    // Temporary fix: Force reset isAttacking after 500ms
+    // Temporary fix: Force reset isAttacking after 250ms (reduced from 500ms)
     setTimeout(() => {
       console.log("Force resetting isAttacking flag");
       this.isAttacking = false;
-    }, 500);
+    }, 250);
 
     // Play attack animation
     this.animateAttack();
@@ -711,7 +711,7 @@ export class Player {
       // Reset the attacking flag
       this.isAttacking = false;
       console.log("Attack animation completed");
-    }, 400); // Slightly longer delay for more visibility
+    }, 200); // Shortened from 400ms to 200ms (half the time)
   }
 
   public canAttack(): boolean {
